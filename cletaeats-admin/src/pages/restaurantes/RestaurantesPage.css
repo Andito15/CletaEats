@@ -1,0 +1,292 @@
+.restaurantes-page {
+    width: 100%;
+}
+
+.restaurantes-page__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.restaurantes-page__title {
+    margin: 0 0 8px;
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+.restaurantes-page__subtitle {
+    margin: 0;
+    color: var(--color-text-soft);
+}
+
+.restaurantes-page__add-button {
+    min-height: 46px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--color-primary);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(46, 125, 50, 0.18);
+    transition:
+            background var(--transition-base),
+            transform var(--transition-base);
+}
+
+.restaurantes-page__add-button:hover {
+    background: var(--color-primary-dark);
+    transform: translateY(-1px);
+}
+
+.restaurantes-page__search-card {
+    margin-bottom: 24px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    box-shadow: var(--shadow-sm);
+}
+
+.restaurantes-page__search-content {
+    padding: 18px;
+}
+
+.restaurantes-page__loader {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+.restaurantes-page__list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.restaurantes-page__item {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    box-shadow: var(--shadow-sm);
+}
+
+.restaurantes-page__item-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 20px;
+}
+
+.restaurantes-page__item-main {
+    min-width: 250px;
+    flex: 1;
+}
+
+.restaurantes-page__item-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.restaurantes-page__item-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--color-text);
+}
+
+.restaurantes-page__item-line {
+    margin: 0 0 4px;
+    font-size: 0.92rem;
+    color: var(--color-text-soft);
+}
+
+.restaurantes-page__item-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.restaurantes-page__icon-button {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+            background var(--transition-base),
+            transform var(--transition-base);
+}
+
+.restaurantes-page__icon-button:hover {
+    transform: translateY(-1px);
+}
+
+.restaurantes-page__icon-button--accent,
+.restaurantes-page__icon-button--info {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.restaurantes-page__icon-button--accent:hover,
+.restaurantes-page__icon-button--info:hover {
+    background: var(--color-primary-soft-hover);
+}
+
+.restaurantes-page__icon-button--success {
+    background: #edf8ef;
+    color: var(--color-success);
+}
+
+.restaurantes-page__icon-button--success:hover {
+    background: #d8f0dc;
+}
+
+.restaurantes-page__icon-button--warning {
+    background: #fff8e6;
+    color: #b7791f;
+}
+
+.restaurantes-page__icon-button--warning:hover {
+    background: #f7ebc6;
+}
+
+.restaurantes-page__empty {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    padding: 22px;
+    color: var(--color-text-soft);
+    box-shadow: var(--shadow-sm);
+}
+
+.restaurantes-page__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.restaurantes-page__dialog-text {
+    margin: 0;
+    color: var(--color-text-soft);
+    line-height: 1.5;
+}
+
+.restaurantes-page__primary-button,
+.restaurantes-page__secondary-button {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+            background var(--transition-base),
+            transform var(--transition-base);
+}
+
+.restaurantes-page__primary-button {
+    border: 0;
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.restaurantes-page__primary-button:hover {
+    background: var(--color-primary-dark);
+}
+
+.restaurantes-page__secondary-button {
+    border: 1px solid var(--color-border);
+    background: #fff;
+    color: var(--color-text);
+}
+
+.restaurantes-page__secondary-button:hover {
+    background: #f8fafc;
+}
+
+.restaurantes-page__top-icon-button {
+    width: 46px;
+    height: 46px;
+    border: 0;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+            background var(--transition-base),
+            transform var(--transition-base);
+    box-shadow: var(--shadow-sm);
+}
+
+.restaurantes-page__top-icon-button:hover {
+    transform: translateY(-1px);
+}
+
+.restaurantes-page__top-icon-button--primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.restaurantes-page__top-icon-button--primary:hover {
+    background: var(--color-primary-dark);
+}
+
+.restaurantes-page__dialog-icon-button {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+            background var(--transition-base),
+            transform var(--transition-base);
+}
+
+.restaurantes-page__dialog-icon-button:hover {
+    transform: translateY(-1px);
+}
+
+.restaurantes-page__dialog-icon-button--primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.restaurantes-page__dialog-icon-button--primary:hover {
+    background: var(--color-primary-dark);
+}
+
+.restaurantes-page__dialog-icon-button--secondary {
+    background: #ff0505;
+    color: #ebefec;
+}
+
+.restaurantes-page__dialog-icon-button--secondary:hover {
+    background: #8a0303;
+}
+
+@media (max-width: 700px) {
+    .restaurantes-page__item-content {
+        align-items: flex-start;
+    }
+
+    .restaurantes-page__item-actions {
+        width: 100%;
+    }
+}
