@@ -155,21 +155,25 @@ class ClienteDireccionService(
     fun marcarPredeterminada(clienteId: Long, direccionId: Long): ClienteDireccionResponse {
         validarClienteExiste(clienteId)
 
-        val direccion = clienteDireccionRepository.findByDireccionIdAndCliente_ClienteId(
-            direccionId,
-            clienteId
-        ) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Dirección no encontrada")
+        val direcciones = clienteDireccionRepository
+            .findByCliente_ClienteIdAndActivaOrderByEsPredeterminadaDescAliasAsc(clienteId, "S")
 
-        if (direccion.activa != "S") {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "La dirección está inactiva")
+        var encontrada: ClienteDireccionEntity? = null
+
+        direcciones.forEach {
+            if (it.direccionId == direccionId) {
+                it.esPredeterminada = "S"
+                encontrada = it
+            } else {
+                it.esPredeterminada = "N"
+            }
+            it.updatedAt = LocalDateTime.now()
         }
 
-        desmarcarPredeterminadas(clienteId)
+        clienteDireccionRepository.saveAll(direcciones)
 
-        direccion.esPredeterminada = "S"
-        direccion.updatedAt = LocalDateTime.now()
-
-        return clienteDireccionRepository.save(direccion).toResponse()
+        return encontrada?.toResponse()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Dirección no encontrada")
     }
 
     private fun validarClienteExiste(clienteId: Long) {
