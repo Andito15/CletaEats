@@ -34,6 +34,8 @@ class SecurityConfig(
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .requestMatchers("/api/clientes/**").hasAnyRole("CLIENTE", "ADMIN")
                     .requestMatchers("/api/repartidores/**").hasAnyRole("REPARTIDOR", "ADMIN")
+                    .requestMatchers(HttpMethod.PATCH, "/api/repartidores/ubicacion").hasRole("REPARTIDOR")
+                    .requestMatchers(HttpMethod.GET, "/api/clientes/pedidos/*/tracking").hasRole("CLIENTE")
                     .anyRequest().authenticated()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
