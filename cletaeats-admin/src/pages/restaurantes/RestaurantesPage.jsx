@@ -195,6 +195,27 @@ export default function RestaurantesPage() {
         }
     };
 
+    const ImagePreview = ({ imageUrl, title }) => {
+        if (!imageUrl) {
+            return (
+                <div className="restaurantes-page__image-placeholder">
+                    Sin imagen
+                </div>
+            );
+        }
+
+        return (
+            <img
+                src={imageUrl}
+                alt={title || "Restaurante"}
+                className="restaurantes-page__image"
+                onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                }}
+            />
+        );
+    };
+
     return (
         <div className="restaurantes-page">
             <div className="restaurantes-page__header">
@@ -249,6 +270,12 @@ export default function RestaurantesPage() {
                     {restaurantesFiltrados.map((item) => (
                         <div className="restaurantes-page__item" key={item.id}>
                             <div className="restaurantes-page__item-content">
+                                <div className="restaurantes-page__item-image">
+                                    <ImagePreview
+                                        imageUrl={item.imagenUrl}
+                                        title={item.nombre}
+                                    />
+                                </div>
                                 <div className="restaurantes-page__item-main">
                                     <div className="restaurantes-page__item-top">
                                         <h3 className="restaurantes-page__item-name">{item.nombre}</h3>
@@ -388,7 +415,15 @@ export default function RestaurantesPage() {
                                 value={form.imagenUrl}
                                 onChange={(e) => handleChange("imagenUrl", e.target.value)}
                                 fullWidth
+                                placeholder="https://..."
                             />
+
+                            <div className="restaurantes-page__preview-card">
+                                <ImagePreview
+                                    imageUrl={form.imagenUrl}
+                                    title={form.nombre}
+                                />
+                            </div>
                         </div>
                     </DialogContent>
 

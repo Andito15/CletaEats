@@ -3,7 +3,15 @@ package com.cletaeats.pedido
 import com.cletaeats.cliente.ClienteEntity
 import com.cletaeats.repartidor.RepartidorEntity
 import com.cletaeats.restaurante.RestauranteEntity
-import jakarta.persistence.*
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
+import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -28,11 +36,11 @@ class PedidoEntity(
     var restaurante: RestauranteEntity? = null,
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "REPARTIDOR_ID", nullable = false)
+    @JoinColumn(name = "REPARTIDOR_ID", nullable = true)
     var repartidor: RepartidorEntity? = null,
 
     @Column(name = "ESTADO", nullable = false, length = 30)
-    var estado: String = "",
+    var estado: String = "PENDIENTE_REPARTIDOR",
 
     @Column(name = "FECHA_PEDIDO", nullable = false)
     var fechaPedido: LocalDateTime = LocalDateTime.now(),
@@ -47,7 +55,7 @@ class PedidoEntity(
     var distanciaKm: BigDecimal = BigDecimal.ZERO,
 
     @Column(name = "TIPO_TARIFA_DIA", nullable = false, length = 1)
-    var tipoTarifaDia: String = "",
+    var tipoTarifaDia: String = "H",
 
     @Column(name = "COSTO_KM_APLICADO", nullable = false, precision = 10, scale = 2)
     var costoKmAplicado: BigDecimal = BigDecimal.ZERO,

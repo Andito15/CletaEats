@@ -17,6 +17,7 @@ import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 @Service
 class PedidoService(
@@ -54,6 +55,7 @@ class PedidoService(
         }
 
         val restauranteIds = combos.mapNotNull { it.restaurante?.restauranteId }.distinct()
+
         if (restauranteIds.size != 1) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -68,25 +70,28 @@ class PedidoService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "El restaurante no está activo")
         }
 
-        val repartidor = obtenerPrimerRepartidorDisponible()
-
         val hoy = LocalDate.now()
         val esFeriado = feriadoRepository.existsByFecha(hoy)
         val tipoTarifaDia = if (esFeriado) "F" else "H"
-        val costoKmAplicado = if (esFeriado) repartidor.costoKmFeriado else repartidor.costoKmHabil
+
+        val costoKmTemporal = if (esFeriado) {
+            BigDecimal("1500.00")
+        } else {
+            BigDecimal("1000.00")
+        }
 
         val pedido = PedidoEntity(
             numeroPedido = generarNumeroPedido(),
             cliente = cliente,
             restaurante = restaurante,
-            repartidor = repartidor,
-            estado = "EN_PREPARACION",
+            repartidor = null,
+            estado = "PENDIENTE_REPARTIDOR",
             fechaPedido = LocalDateTime.now(),
             fechaEntrega = null,
             direccionEntrega = request.direccionEntrega.trim(),
             distanciaKm = request.distanciaKm.setScale(2, RoundingMode.HALF_UP),
             tipoTarifaDia = tipoTarifaDia,
-            costoKmAplicado = costoKmAplicado.setScale(2, RoundingMode.HALF_UP),
+            costoKmAplicado = costoKmTemporal.setScale(2, RoundingMode.HALF_UP),
             observaciones = request.observaciones?.trim()
         )
 
@@ -105,40 +110,18 @@ class PedidoService(
 
         pedidoDetalleRepository.saveAll(detalles)
 
-        val subtotal = detalles.fold(BigDecimal.ZERO) { acc, d ->
-            acc + d.precioUnitario.multiply(BigDecimal(d.cantidad))
-        }.setScale(2, RoundingMode.HALF_UP)
-
-        val costoTransporte = pedidoGuardado.distanciaKm
-            .multiply(pedidoGuardado.costoKmAplicado)
-            .setScale(2, RoundingMode.HALF_UP)
-
-        val porcentajeIva = BigDecimal("13.00")
-        val baseImponible = subtotal + costoTransporte
-        val montoIva = baseImponible
-            .multiply(BigDecimal("0.13"))
-            .setScale(2, RoundingMode.HALF_UP)
-
-        val montoTotal = (baseImponible + montoIva).setScale(2, RoundingMode.HALF_UP)
-
-        val factura = FacturaEntity(
+        val factura = crearFacturaParaPedido(
             pedido = pedidoGuardado,
-            numeroFactura = generarNumeroFactura(),
-            subtotal = subtotal,
-            costoTransporte = costoTransporte,
-            porcentajeIva = porcentajeIva,
-            montoIva = montoIva,
-            montoTotal = montoTotal,
-            estadoPago = "PAGADO",
-            medioPago = "TARJETA"
+            detalles = detalles
         )
 
         facturaRepository.save(factura)
 
-        repartidor.disponibilidad = "OCUPADO"
-        repartidorRepository.save(repartidor)
-
-        return construirPedidoResponse(pedidoGuardado, detalles, factura)
+        return construirPedidoResponse(
+            pedido = pedidoGuardado,
+            detalles = detalles,
+            factura = factura
+        )
     }
 
     fun listarMisPedidosCliente(correoCliente: String): List<PedidoResponse> {
@@ -157,6 +140,58 @@ class PedidoService(
             .map { mapPedidoCompleto(it) }
     }
 
+    fun listarPedidosDisponiblesRepartidor(correoRepartidor: String): List<PedidoResponse> {
+        val repartidor = repartidorRepository.findByUsuario_Correo(correoRepartidor)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Repartidor no encontrado")
+
+        validarRepartidorPuedeAceptar(repartidor)
+
+        return pedidoRepository
+            .findByEstadoAndRepartidorIsNullOrderByFechaPedidoAsc("PENDIENTE_REPARTIDOR")
+            .map { mapPedidoCompleto(it) }
+    }
+
+    @Transactional
+    fun aceptarPedidoRepartidor(
+        correoRepartidor: String,
+        pedidoId: Long
+    ): PedidoResponse {
+        val repartidor = repartidorRepository.findByUsuario_Correo(correoRepartidor)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Repartidor no encontrado")
+
+        validarRepartidorPuedeAceptar(repartidor)
+
+        val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado")
+        }
+
+        if (pedido.repartidor != null || pedido.estado != "PENDIENTE_REPARTIDOR") {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Este pedido ya fue aceptado por otro repartidor"
+            )
+        }
+
+        val costoKmAplicado = if (pedido.tipoTarifaDia == "F") {
+            repartidor.costoKmFeriado
+        } else {
+            repartidor.costoKmHabil
+        }.setScale(2, RoundingMode.HALF_UP)
+
+        pedido.repartidor = repartidor
+        pedido.estado = "EN_PREPARACION"
+        pedido.costoKmAplicado = costoKmAplicado
+
+        repartidor.disponibilidad = "OCUPADO"
+
+        val pedidoActualizado = pedidoRepository.save(pedido)
+        repartidorRepository.save(repartidor)
+
+        recalcularFactura(pedidoActualizado)
+
+        return mapPedidoCompleto(pedidoActualizado)
+    }
+
     @Transactional
     fun actualizarEstadoRepartidor(
         correoRepartidor: String,
@@ -171,10 +206,14 @@ class PedidoService(
         }
 
         if (pedido.repartidor?.repartidorId != repartidor.repartidorId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Este pedido no pertenece al repartidor autenticado")
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Este pedido no pertenece al repartidor autenticado"
+            )
         }
 
         val nuevoEstado = request.estado.trim().uppercase()
+
         if (nuevoEstado !in listOf("EN_PREPARACION", "EN_CAMINO", "ENTREGADO")) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -190,10 +229,12 @@ class PedidoService(
             repartidor.kilometrosRecorridosDia = repartidor.kilometrosRecorridosDia
                 .add(pedido.distanciaKm)
                 .setScale(2, RoundingMode.HALF_UP)
+
             repartidorRepository.save(repartidor)
         }
 
         val pedidoActualizado = pedidoRepository.save(pedido)
+
         return mapPedidoCompleto(pedidoActualizado)
     }
 
@@ -201,29 +242,124 @@ class PedidoService(
         val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado")
         }
+
         return mapPedidoCompleto(pedido)
     }
 
-    private fun obtenerPrimerRepartidorDisponible(): RepartidorEntity {
-        val candidatos = repartidorRepository.findByDisponibilidadOrderByRepartidorIdAsc("DISPONIBLE")
+    fun listarTodosAdmin(): List<PedidoResponse> {
+        return pedidoRepository.findAllByOrderByFechaPedidoDesc()
+            .map { mapPedidoCompleto(it) }
+    }
 
-        val elegido = candidatos.firstOrNull { repartidor ->
-            val usuarioActivo = repartidor.usuario?.estado == "ACTIVO"
-            val amonestaciones = amonestacionRepository
-                .countByRepartidor_RepartidorIdAndActiva(repartidor.repartidorId!!, "S")
-            usuarioActivo && amonestaciones < 4
+    private fun validarRepartidorPuedeAceptar(repartidor: RepartidorEntity) {
+        if (repartidor.usuario?.estado != "ACTIVO") {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "El usuario repartidor no está activo"
+            )
         }
 
-        return elegido ?: throw ResponseStatusException(
-            HttpStatus.CONFLICT,
-            "No hay repartidores disponibles en este momento"
+        if (repartidor.disponibilidad != "DISPONIBLE") {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El repartidor no está disponible para aceptar pedidos"
+            )
+        }
+
+        val amonestaciones = amonestacionRepository
+            .countByRepartidor_RepartidorIdAndActiva(repartidor.repartidorId!!, "S")
+
+        if (amonestaciones >= 4) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El repartidor tiene demasiadas amonestaciones activas"
+            )
+        }
+    }
+
+    private fun crearFacturaParaPedido(
+        pedido: PedidoEntity,
+        detalles: List<PedidoDetalleEntity>
+    ): FacturaEntity {
+        val subtotal = calcularSubtotal(detalles)
+        val costoTransporte = calcularCostoTransporte(pedido)
+        val porcentajeIva = BigDecimal("13.00")
+        val montoIva = calcularIva(subtotal, costoTransporte)
+        val montoTotal = subtotal
+            .add(costoTransporte)
+            .add(montoIva)
+            .setScale(2, RoundingMode.HALF_UP)
+
+        return FacturaEntity(
+            pedido = pedido,
+            numeroFactura = generarNumeroFactura(),
+            subtotal = subtotal,
+            costoTransporte = costoTransporte,
+            porcentajeIva = porcentajeIva,
+            montoIva = montoIva,
+            montoTotal = montoTotal,
+            estadoPago = "PAGADO",
+            medioPago = "TARJETA"
         )
+    }
+
+    private fun recalcularFactura(pedido: PedidoEntity) {
+        val detalles = pedidoDetalleRepository.findByPedido_PedidoId(pedido.pedidoId!!)
+        val factura = facturaRepository.findByPedido_PedidoId(pedido.pedidoId!!)
+            ?: return
+
+        val subtotal = calcularSubtotal(detalles)
+        val costoTransporte = calcularCostoTransporte(pedido)
+        val montoIva = calcularIva(subtotal, costoTransporte)
+        val montoTotal = subtotal
+            .add(costoTransporte)
+            .add(montoIva)
+            .setScale(2, RoundingMode.HALF_UP)
+
+        factura.subtotal = subtotal
+        factura.costoTransporte = costoTransporte
+        factura.porcentajeIva = BigDecimal("13.00")
+        factura.montoIva = montoIva
+        factura.montoTotal = montoTotal
+
+        facturaRepository.save(factura)
+    }
+
+    private fun calcularSubtotal(
+        detalles: List<PedidoDetalleEntity>
+    ): BigDecimal {
+        return detalles.fold(BigDecimal.ZERO) { acc, detalle ->
+            acc + detalle.precioUnitario.multiply(BigDecimal(detalle.cantidad))
+        }.setScale(2, RoundingMode.HALF_UP)
+    }
+
+    private fun calcularCostoTransporte(
+        pedido: PedidoEntity
+    ): BigDecimal {
+        return pedido.distanciaKm
+            .multiply(pedido.costoKmAplicado)
+            .setScale(2, RoundingMode.HALF_UP)
+    }
+
+    private fun calcularIva(
+        subtotal: BigDecimal,
+        costoTransporte: BigDecimal
+    ): BigDecimal {
+        return subtotal
+            .add(costoTransporte)
+            .multiply(BigDecimal("0.13"))
+            .setScale(2, RoundingMode.HALF_UP)
     }
 
     private fun mapPedidoCompleto(pedido: PedidoEntity): PedidoResponse {
         val detalles = pedidoDetalleRepository.findByPedido_PedidoId(pedido.pedidoId!!)
         val factura = facturaRepository.findByPedido_PedidoId(pedido.pedidoId!!)
-        return construirPedidoResponse(pedido, detalles, factura)
+
+        return construirPedidoResponse(
+            pedido = pedido,
+            detalles = detalles,
+            factura = factura
+        )
     }
 
     private fun construirPedidoResponse(
@@ -276,17 +412,28 @@ class PedidoService(
     }
 
     private fun generarNumeroPedido(): String {
-        val stamp = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now())
-        return "PED-$stamp"
+        val stamp = DateTimeFormatter
+            .ofPattern("yyyyMMddHHmmssSSS")
+            .format(LocalDateTime.now())
+
+        val suffix = UUID.randomUUID()
+            .toString()
+            .substring(0, 6)
+            .uppercase()
+
+        return "PED-$stamp-$suffix"
     }
 
     private fun generarNumeroFactura(): String {
-        val stamp = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now())
-        return "FAC-$stamp"
-    }
+        val stamp = DateTimeFormatter
+            .ofPattern("yyyyMMddHHmmssSSS")
+            .format(LocalDateTime.now())
 
-    fun listarTodosAdmin(): List<PedidoResponse> {
-        return pedidoRepository.findAllByOrderByFechaPedidoDesc()
-            .map { mapPedidoCompleto(it) }
+        val suffix = UUID.randomUUID()
+            .toString()
+            .substring(0, 6)
+            .uppercase()
+
+        return "FAC-$stamp-$suffix"
     }
 }

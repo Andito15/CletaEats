@@ -6,4 +6,8 @@ interface PedidoRepository : JpaRepository<PedidoEntity, Long> {
     fun findByCliente_ClienteIdOrderByFechaPedidoDesc(clienteId: Long): List<PedidoEntity>
     fun findByRepartidor_RepartidorIdOrderByFechaPedidoDesc(repartidorId: Long): List<PedidoEntity>
     fun findAllByOrderByFechaPedidoDesc(): List<PedidoEntity>
+
+    fun findByEstadoAndRepartidorIsNullOrderByFechaPedidoAsc(
+        estado: String
+    ): List<PedidoEntity>
 }

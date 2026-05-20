@@ -250,6 +250,27 @@ export default function CombosPage() {
         }
     };
 
+    const ImagePreview = ({ imageUrl, title }) => {
+        if (!imageUrl) {
+            return (
+                <div className="combos-page__image-placeholder">
+                    Sin imagen
+                </div>
+            );
+        }
+
+        return (
+            <img
+                src={imageUrl}
+                alt={title || "Combo"}
+                className="combos-page__image"
+                onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                }}
+            />
+        );
+    };
+
     return (
         <div className="combos-page">
             <div className="combos-page__header">
@@ -325,6 +346,12 @@ export default function CombosPage() {
                     {combosFiltrados.map((item) => (
                         <div className="combos-page__item" key={item.id}>
                             <div className="combos-page__item-content">
+                                <div className="combos-page__item-image">
+                                    <ImagePreview
+                                        imageUrl={item.imagenUrl}
+                                        title={item.nombre}
+                                    />
+                                </div>
                                 <div className="combos-page__item-main">
                                     <div className="combos-page__item-top">
                                         <h3 className="combos-page__item-name">
@@ -435,11 +462,19 @@ export default function CombosPage() {
                             />
 
                             <TextField
-                                label="Imagen"
+                                label="URL de imagen"
                                 value={form.imagenUrl}
                                 onChange={(e) => handleChange("imagenUrl", e.target.value)}
                                 fullWidth
+                                placeholder="https://..."
                             />
+
+                            <div className="combos-page__preview-card">
+                                <ImagePreview
+                                    imageUrl={form.imagenUrl}
+                                    title={form.nombre}
+                                />
+                            </div>
                         </div>
                     </DialogContent>
 
