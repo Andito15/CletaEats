@@ -32,6 +32,8 @@ function estadoClase(estado) {
         : "app-chip app-chip--neutral";
 }
 
+
+
 export default function CombosPage() {
     const [restaurantes, setRestaurantes] = useState([]);
     const [selectedRestauranteId, setSelectedRestauranteId] = useState("");
@@ -129,6 +131,33 @@ export default function CombosPage() {
             setError("");
         } catch (err) {
             setError(err.response?.data?.message || "No se pudieron cargar los combos");
+        }
+    };
+
+    const subirImagen = async (file) => {
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            setSaving(true);
+
+            const response = await api.post(
+                "/api/admin/uploads/imagen",
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+
+            handleChange("imagenUrl", response.data.url);
+        } catch (err) {
+            setError(err.response?.data?.message || "No se pudo subir la imagen");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -248,6 +277,19 @@ export default function CombosPage() {
         } finally {
             setConfirmLoading(false);
         }
+    };
+
+    const handleDropImage = (e) => {
+        e.preventDefault();
+
+        const file = e.dataTransfer.files?.[0];
+        if (!file) return;
+
+        subirImagen(file);
+    };
+
+    const handleDragOverImage = (e) => {
+        e.preventDefault();
     };
 
     const ImagePreview = ({ imageUrl, title }) => {
@@ -468,6 +510,29 @@ export default function CombosPage() {
                                 fullWidth
                                 placeholder="https://..."
                             />
+
+                            <label
+                                className="app-upload-dropzone"
+                                onDrop={handleDropImage}
+                                onDragOver={handleDragOverImage}
+                            >
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    hidden
+                                    onChange={(e) => subirImagen(e.target.files?.[0])}
+                                />
+
+                                <span className="app-upload-dropzone__icon">＋</span>
+
+                                <span className="app-upload-dropzone__title">
+                                    Subir imagen
+                                </span>
+
+                                <span className="app-upload-dropzone__hint">
+                                    Arrastrá un PNG, JPG o WEBP aquí
+                                </span>
+                            </label>
 
                             <div className="combos-page__preview-card">
                                 <ImagePreview
