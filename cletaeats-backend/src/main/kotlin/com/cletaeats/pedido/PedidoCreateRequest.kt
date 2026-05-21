@@ -17,5 +17,8 @@ data class PedidoCreateRequest(
     val observaciones: String? = null,
 
     @field:NotEmpty(message = "Debe incluir al menos un combo")
-    val items: List<@Valid PedidoCreateItemRequest>
+    val items: List<@Valid PedidoCreateItemRequest>,
+
+    val medioPago: String?,
+    val tarjetaResumen: String?
 )

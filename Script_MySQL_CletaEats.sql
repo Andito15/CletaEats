@@ -401,6 +401,8 @@ LEFT JOIN factura f
        ON f.pedido_id = p.pedido_id
 GROUP BY r.restaurante_id, r.nombre;
 
+ALTER TABLE FACTURA
+ADD COLUMN TARJETA_RESUMEN VARCHAR(80) NULL AFTER MEDIO_PAGO;
 
 -- Nota:
 -- El script original trae un PACKAGE PL/SQL (PKG_TRACKING_ENTREGA).

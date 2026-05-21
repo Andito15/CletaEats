@@ -112,7 +112,9 @@ class PedidoService(
 
         val factura = crearFacturaParaPedido(
             pedido = pedidoGuardado,
-            detalles = detalles
+            detalles = detalles,
+            medioPago = request.medioPago,
+            tarjetaResumen = request.tarjetaResumen
         )
 
         facturaRepository.save(factura)
@@ -279,16 +281,35 @@ class PedidoService(
 
     private fun crearFacturaParaPedido(
         pedido: PedidoEntity,
-        detalles: List<PedidoDetalleEntity>
+        detalles: List<PedidoDetalleEntity>,
+        medioPago: String?,
+        tarjetaResumen: String?
     ): FacturaEntity {
         val subtotal = calcularSubtotal(detalles)
         val costoTransporte = calcularCostoTransporte(pedido)
         val porcentajeIva = BigDecimal("13.00")
-        val montoIva = calcularIva(subtotal, costoTransporte)
+
+        val montoIva = calcularIva(
+            subtotal = subtotal,
+            costoTransporte = costoTransporte
+        )
+
         val montoTotal = subtotal
             .add(costoTransporte)
             .add(montoIva)
             .setScale(2, RoundingMode.HALF_UP)
+
+        val medioPagoNormalizado = medioPago
+            ?.trim()
+            ?.uppercase()
+            ?.takeIf { it in listOf("TARJETA", "EFECTIVO") }
+            ?: "TARJETA"
+
+        val estadoPago = if (medioPagoNormalizado == "EFECTIVO") {
+            "PENDIENTE"
+        } else {
+            "PAGADO"
+        }
 
         return FacturaEntity(
             pedido = pedido,
@@ -298,8 +319,13 @@ class PedidoService(
             porcentajeIva = porcentajeIva,
             montoIva = montoIva,
             montoTotal = montoTotal,
-            estadoPago = "PAGADO",
-            medioPago = "TARJETA"
+            estadoPago = estadoPago,
+            medioPago = medioPagoNormalizado,
+            tarjetaResumen = if (medioPagoNormalizado == "TARJETA") {
+                tarjetaResumen?.trim()
+            } else {
+                null
+            }
         )
     }
 
