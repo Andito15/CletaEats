@@ -32,6 +32,10 @@ class SecurityConfig(
                     .requestMatchers("/api/auth/**",
                         "/uploads/images/**").permitAll()
                     .requestMatchers("/api/auth/me").authenticated()
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/restaurantes/**"
+                    ).permitAll()
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .requestMatchers("/api/clientes/**").hasAnyRole("CLIENTE", "ADMIN")
                     .requestMatchers("/api/repartidores/**").hasAnyRole("REPARTIDOR", "ADMIN")
