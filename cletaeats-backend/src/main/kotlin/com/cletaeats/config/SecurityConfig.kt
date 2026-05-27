@@ -24,26 +24,56 @@ class SecurityConfig(
         http
             .cors(Customizer.withDefaults())
             .csrf { it.disable() }
-            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .sessionManagement {
+                it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            }
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .requestMatchers("/error").permitAll()
-                    .requestMatchers("/api/auth/**",
-                        "/uploads/images/**").permitAll()
+
+                    .requestMatchers(
+                        "/",
+                        "/health",
+                        "/error",
+                        "/uploads/images/**"
+                    ).permitAll()
+
+                    .requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/register"
+                    ).permitAll()
+
                     .requestMatchers("/api/auth/me").authenticated()
+
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/restaurantes/**"
                     ).permitAll()
-                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                    .requestMatchers("/api/clientes/**").hasAnyRole("CLIENTE", "ADMIN")
-                    .requestMatchers("/api/repartidores/**").hasAnyRole("REPARTIDOR", "ADMIN")
-                    .requestMatchers(HttpMethod.PATCH, "/api/repartidores/ubicacion").hasRole("REPARTIDOR")
-                    .requestMatchers(HttpMethod.GET, "/api/clientes/pedidos/*/tracking").hasRole("CLIENTE")
+
+                    .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+
+                    .requestMatchers("/api/clientes/**").hasAnyAuthority(
+                        "CLIENTE",
+                        "ADMIN"
+                    )
+
+                    .requestMatchers(HttpMethod.PATCH, "/api/repartidores/ubicacion")
+                    .hasAuthority("REPARTIDOR")
+
+                    .requestMatchers(HttpMethod.GET, "/api/clientes/pedidos/*/tracking")
+                    .hasAuthority("CLIENTE")
+
+                    .requestMatchers("/api/repartidores/**").hasAnyAuthority(
+                        "REPARTIDOR",
+                        "ADMIN"
+                    )
+
                     .anyRequest().authenticated()
             }
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(
+                jwtAuthenticationFilter,
+                UsernamePasswordAuthenticationFilter::class.java
+            )
 
         return http.build()
     }
