@@ -52,16 +52,16 @@ class SecurityConfig(
 
                     .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
-                    .requestMatchers("/api/clientes/**").hasAnyAuthority(
-                        "CLIENTE",
-                        "ADMIN"
-                    )
-
                     .requestMatchers(HttpMethod.PATCH, "/api/repartidores/ubicacion")
                     .hasAuthority("REPARTIDOR")
 
                     .requestMatchers(HttpMethod.GET, "/api/clientes/pedidos/*/tracking")
                     .hasAuthority("CLIENTE")
+
+                    .requestMatchers("/api/clientes/**").hasAnyAuthority(
+                        "CLIENTE",
+                        "ADMIN"
+                    )
 
                     .requestMatchers("/api/repartidores/**").hasAnyAuthority(
                         "REPARTIDOR",
