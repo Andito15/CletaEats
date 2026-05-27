@@ -2,15 +2,15 @@ FROM eclipse-temurin:21-jdk AS build
 
 WORKDIR /app
 
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle.kts .
-COPY settings.gradle.kts .
+COPY cletaeats-backend/gradlew .
+COPY cletaeats-backend/gradle gradle
+COPY cletaeats-backend/build.gradle.kts .
+COPY cletaeats-backend/settings.gradle.kts .
 
 RUN chmod +x ./gradlew
 RUN ./gradlew dependencies --no-daemon || true
 
-COPY src src
+COPY cletaeats-backend/src src
 
 RUN ./gradlew clean bootJar -x test --no-daemon
 
