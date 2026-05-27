@@ -10,4 +10,8 @@ interface PedidoRepository : JpaRepository<PedidoEntity, Long> {
     fun findByEstadoAndRepartidorIsNullOrderByFechaPedidoAsc(
         estado: String
     ): List<PedidoEntity>
+
+    fun findByEstadoAndRepartidorIsNullOrderByFechaPedidoDesc(
+        estado: String
+    ): List<PedidoEntity>
 }

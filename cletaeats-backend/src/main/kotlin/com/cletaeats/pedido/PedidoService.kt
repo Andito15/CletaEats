@@ -142,15 +142,28 @@ class PedidoService(
             .map { mapPedidoCompleto(it) }
     }
 
-    fun listarPedidosDisponiblesRepartidor(correoRepartidor: String): List<PedidoResponse> {
+    @Transactional(readOnly = true)
+    fun listarPedidosDisponiblesRepartidor(
+        correoRepartidor: String
+    ): List<PedidoResponse> {
         val repartidor = repartidorRepository.findByUsuario_Correo(correoRepartidor)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Repartidor no encontrado")
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Repartidor no encontrado"
+            )
 
-        validarRepartidorPuedeAceptar(repartidor)
+        if (repartidor.usuario?.estado != "ACTIVO") {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "El usuario repartidor no está activo"
+            )
+        }
 
         return pedidoRepository
-            .findByEstadoAndRepartidorIsNullOrderByFechaPedidoAsc("PENDIENTE_REPARTIDOR")
-            .map { mapPedidoCompleto(it) }
+            .findByEstadoAndRepartidorIsNullOrderByFechaPedidoDesc("PENDIENTE_REPARTIDOR")
+            .map { pedido ->
+                mapPedidoCompleto(pedido)
+            }
     }
 
     @Transactional
@@ -190,6 +203,13 @@ class PedidoService(
         repartidorRepository.save(repartidor)
 
         recalcularFactura(pedidoActualizado)
+
+        if (repartidor.disponibilidad != "DISPONIBLE") {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El repartidor no está disponible"
+            )
+        }
 
         return mapPedidoCompleto(pedidoActualizado)
     }
