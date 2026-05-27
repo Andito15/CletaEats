@@ -50,19 +50,31 @@ class SecurityConfig(
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
-        val config = CorsConfiguration()
+        val configuration = CorsConfiguration()
 
-        config.allowedOrigins = listOf(
-            "https://localhost:5173",
-            "https://10.54.17.102:5173",
+        configuration.allowedOriginPatterns = listOf(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://*.netlify.app",
+            "https://*.vercel.app",
+            "https://cletaeats.onrender.com"
         )
 
-        config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE","PATCH", "OPTIONS")
-        config.allowedHeaders = listOf("*")
-        config.allowCredentials = true
+        configuration.allowedMethods = listOf(
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
+        )
+
+        configuration.allowedHeaders = listOf("*")
+        configuration.exposedHeaders = listOf("Authorization")
+        configuration.allowCredentials = true
 
         val source = UrlBasedCorsConfigurationSource()
-        source.registerCorsConfiguration("/**", config)
+        source.registerCorsConfiguration("/**", configuration)
 
         return source
     }
