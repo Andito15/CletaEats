@@ -50,23 +50,19 @@ class SecurityConfig(
                         "/api/restaurantes/**"
                     ).permitAll()
 
-                    .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                     .requestMatchers(HttpMethod.PATCH, "/api/repartidores/ubicacion")
-                    .hasAuthority("REPARTIDOR")
+                    .hasRole("REPARTIDOR")
 
                     .requestMatchers(HttpMethod.GET, "/api/clientes/pedidos/*/tracking")
-                    .hasAuthority("CLIENTE")
+                    .hasRole("CLIENTE")
 
-                    .requestMatchers("/api/clientes/**").hasAnyAuthority(
-                        "CLIENTE",
-                        "ADMIN"
-                    )
+                    .requestMatchers("/api/clientes/**")
+                    .hasAnyRole("CLIENTE", "ADMIN")
 
-                    .requestMatchers("/api/repartidores/**").hasAnyAuthority(
-                        "REPARTIDOR",
-                        "ADMIN"
-                    )
+                    .requestMatchers("/api/repartidores/**")
+                    .hasAnyRole("REPARTIDOR", "ADMIN")
 
                     .anyRequest().authenticated()
             }
