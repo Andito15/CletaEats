@@ -172,36 +172,24 @@ class PedidoService(
         pedidoId: Long
     ): PedidoResponse {
         val repartidor = repartidorRepository.findByUsuario_Correo(correoRepartidor)
-            ?: throw ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Repartidor no encontrado"
-            )
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Repartidor no encontrado")
 
         if (repartidor.usuario?.estado != "ACTIVO") {
-            throw ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "El usuario repartidor no está activo"
-            )
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "El repartidor no está activo")
         }
 
         if (repartidor.disponibilidad != "DISPONIBLE") {
-            throw ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "El repartidor no está disponible"
-            )
+            throw ResponseStatusException(HttpStatus.CONFLICT, "El repartidor no está disponible")
         }
 
         val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
-            ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Pedido no encontrado"
-            )
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado")
         }
 
         if (pedido.estado != "PENDIENTE_REPARTIDOR") {
             throw ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "El pedido no está pendiente de repartidor. Estado actual: ${pedido.estado}"
+                "El pedido no está pendiente de repartidor"
             )
         }
 
@@ -218,9 +206,9 @@ class PedidoService(
         repartidor.disponibilidad = "OCUPADO"
 
         repartidorRepository.save(repartidor)
-        val pedidoActualizado = pedidoRepository.save(pedido)
+        val actualizado = pedidoRepository.save(pedido)
 
-        return mapPedidoCompleto(pedidoActualizado)
+        return mapPedidoCompleto(actualizado)
     }
 
     @Transactional
@@ -244,39 +232,53 @@ class PedidoService(
         }
 
         val nuevoEstado = request.estado.trim().uppercase()
+        val estadoActual = pedido.estado.trim().uppercase()
 
-        if (nuevoEstado !in listOf("EN_PREPARACION", "EN_CAMINO", "ENTREGADO")) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Estado inválido. Use EN_PREPARACION, EN_CAMINO o ENTREGADO"
-            )
+        when (nuevoEstado) {
+            "EN_CAMINO" -> {
+                if (estadoActual != "EN_PREPARACION") {
+                    throw ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Solo se puede iniciar viaje desde EN_PREPARACION"
+                    )
+                }
+
+                pedido.estado = "EN_CAMINO"
+            }
+
+            "ENTREGADO" -> {
+                if (estadoActual != "EN_CAMINO") {
+                    throw ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "No se puede terminar el pedido sin iniciar el viaje"
+                    )
+                }
+
+                pedido.estado = "ENTREGADO"
+                pedido.fechaEntrega = LocalDateTime.now()
+
+                repartidor.disponibilidad = "DISPONIBLE"
+
+                val kmActuales = repartidor.kilometrosRecorridosDia ?: BigDecimal.ZERO
+
+                repartidor.kilometrosRecorridosDia = kmActuales
+                    .add(pedido.distanciaKm ?: BigDecimal.ZERO)
+                    .setScale(2, RoundingMode.HALF_UP)
+
+                repartidorRepository.save(repartidor)
+            }
+
+            else -> {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Estado inválido. Use EN_CAMINO o ENTREGADO"
+                )
+            }
         }
 
-        if (pedido.estado == "ENTREGADO") {
-            throw ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Este pedido ya fue entregado"
-            )
-        }
+        val actualizado = pedidoRepository.save(pedido)
 
-        pedido.estado = nuevoEstado
-
-        if (nuevoEstado == "ENTREGADO") {
-            pedido.fechaEntrega = LocalDateTime.now()
-            repartidor.disponibilidad = "DISPONIBLE"
-
-            val kmActuales = repartidor.kilometrosRecorridosDia ?: BigDecimal.ZERO
-
-            repartidor.kilometrosRecorridosDia = kmActuales
-                .add(pedido.distanciaKm)
-                .setScale(2, RoundingMode.HALF_UP)
-
-            repartidorRepository.save(repartidor)
-        }
-
-        val pedidoActualizado = pedidoRepository.save(pedido)
-
-        return mapPedidoCompleto(pedidoActualizado)
+        return mapPedidoCompleto(actualizado)
     }
 
     fun obtenerPedidoPorId(pedidoId: Long): PedidoResponse {
