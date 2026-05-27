@@ -223,12 +223,22 @@ class PedidoService(
             )
         }
 
+        if (pedido.estado == "ENTREGADO") {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Este pedido ya fue entregado"
+            )
+        }
+
         pedido.estado = nuevoEstado
 
         if (nuevoEstado == "ENTREGADO") {
             pedido.fechaEntrega = LocalDateTime.now()
             repartidor.disponibilidad = "DISPONIBLE"
-            repartidor.kilometrosRecorridosDia = repartidor.kilometrosRecorridosDia
+
+            val kmActuales = repartidor.kilometrosRecorridosDia ?: BigDecimal.ZERO
+
+            repartidor.kilometrosRecorridosDia = kmActuales
                 .add(pedido.distanciaKm)
                 .setScale(2, RoundingMode.HALF_UP)
 
