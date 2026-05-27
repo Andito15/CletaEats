@@ -172,37 +172,17 @@ class PedidoService(
         pedidoId: Long
     ): PedidoResponse {
         val repartidor = repartidorRepository.findByUsuario_Correo(correoRepartidor)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Repartidor no encontrado")
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Repartidor no encontrado"
+            )
 
-        validarRepartidorPuedeAceptar(repartidor)
-
-        val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado")
-        }
-
-        if (pedido.repartidor != null || pedido.estado != "PENDIENTE_REPARTIDOR") {
+        if (repartidor.usuario?.estado != "ACTIVO") {
             throw ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Este pedido ya fue aceptado por otro repartidor"
+                HttpStatus.FORBIDDEN,
+                "El usuario repartidor no está activo"
             )
         }
-
-        val costoKmAplicado = if (pedido.tipoTarifaDia == "F") {
-            repartidor.costoKmFeriado
-        } else {
-            repartidor.costoKmHabil
-        }.setScale(2, RoundingMode.HALF_UP)
-
-        pedido.repartidor = repartidor
-        pedido.estado = "EN_PREPARACION"
-        pedido.costoKmAplicado = costoKmAplicado
-
-        repartidor.disponibilidad = "OCUPADO"
-
-        val pedidoActualizado = pedidoRepository.save(pedido)
-        repartidorRepository.save(repartidor)
-
-        recalcularFactura(pedidoActualizado)
 
         if (repartidor.disponibilidad != "DISPONIBLE") {
             throw ResponseStatusException(
@@ -210,6 +190,35 @@ class PedidoService(
                 "El repartidor no está disponible"
             )
         }
+
+        val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
+            ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Pedido no encontrado"
+            )
+        }
+
+        if (pedido.estado != "PENDIENTE_REPARTIDOR") {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El pedido no está pendiente de repartidor. Estado actual: ${pedido.estado}"
+            )
+        }
+
+        if (pedido.repartidor != null) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El pedido ya fue asignado a otro repartidor"
+            )
+        }
+
+        pedido.repartidor = repartidor
+        pedido.estado = "EN_PREPARACION"
+
+        repartidor.disponibilidad = "OCUPADO"
+
+        repartidorRepository.save(repartidor)
+        val pedidoActualizado = pedidoRepository.save(pedido)
 
         return mapPedidoCompleto(pedidoActualizado)
     }
