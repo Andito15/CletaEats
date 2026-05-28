@@ -231,8 +231,8 @@ class PedidoService(
             )
         }
 
-        val nuevoEstado = request.estado.trim().uppercase()
         val estadoActual = pedido.estado.trim().uppercase()
+        val nuevoEstado = request.estado.trim().uppercase()
 
         when (nuevoEstado) {
             "EN_CAMINO" -> {
@@ -250,7 +250,7 @@ class PedidoService(
                 if (estadoActual != "EN_CAMINO") {
                     throw ResponseStatusException(
                         HttpStatus.CONFLICT,
-                        "No se puede terminar el pedido sin iniciar el viaje"
+                        "Primero debe iniciar el viaje antes de terminar el pedido"
                     )
                 }
 
