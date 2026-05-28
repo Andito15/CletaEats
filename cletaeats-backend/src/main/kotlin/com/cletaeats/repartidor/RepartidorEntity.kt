@@ -3,6 +3,7 @@ package com.cletaeats.repartidor
 import com.cletaeats.usuario.UsuarioEntity
 import jakarta.persistence.*
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "REPARTIDOR")
@@ -29,7 +30,7 @@ class RepartidorEntity(
     @Column(name = "DISPONIBILIDAD", nullable = false, length = 20)
     var disponibilidad: String = "",
 
-    @Column(name = "KILOMETROS_RECORRIDOS_DIA", precision = 10, scale = 2)
+    @Column(name = "KILOMETROS_RECORRIDOS_DIA", nullable = false, precision = 10, scale = 2)
     var kilometrosRecorridosDia: BigDecimal = BigDecimal.ZERO,
 
     @Column(name = "COSTO_KM_HABIL", nullable = false, precision = 10, scale = 2)
@@ -39,5 +40,17 @@ class RepartidorEntity(
     var costoKmFeriado: BigDecimal = BigDecimal.ZERO,
 
     @Column(name = "FOTO_URL", length = 500)
-    var fotoUrl: String? = null
+    var fotoUrl: String? = null,
+
+    @Column(name = "LATITUD_ACTUAL")
+    var latitudActual: Double? = null,
+
+    @Column(name = "LONGITUD_ACTUAL")
+    var longitudActual: Double? = null,
+
+    @Column(name = "PRECISION_METROS")
+    var precisionMetros: Double? = null,
+
+    @Column(name = "ULTIMA_UBICACION_EN")
+    var ultimaUbicacionEn: LocalDateTime? = null
 )
