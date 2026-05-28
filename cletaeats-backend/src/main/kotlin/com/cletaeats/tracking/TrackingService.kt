@@ -22,13 +22,19 @@ class TrackingService(
         authName: String,
         request: UbicacionRepartidorRequest
     ): UbicacionRepartidorResponse {
+        val pedidoId = request.pedidoId
+            ?: throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "El pedidoId es obligatorio"
+            )
+
         val repartidor = repartidorRepository.findByUsuario_Correo(authName)
             ?: throw ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Repartidor no encontrado"
             )
 
-        val pedido = pedidoRepository.findById(request.pedidoId).orElseThrow {
+        val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
             ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Pedido no encontrado"
@@ -59,9 +65,13 @@ class TrackingService(
         val guardado = repartidorRepository.save(repartidor)
 
         return UbicacionRepartidorResponse(
-            pedidoId = pedido.pedidoId ?: request.pedidoId,
+            pedidoId = pedidoId,
             estadoPedido = pedido.estado,
-            repartidorId = guardado.repartidorId ?: repartidor.repartidorId,
+            repartidorId = guardado.repartidorId
+                ?: throw ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Repartidor sin ID"
+                ),
             repartidorNombre = guardado.usuario?.nombreCompleto ?: "Repartidor",
             latitud = guardado.latitudActual ?: request.latitud,
             longitud = guardado.longitudActual ?: request.longitud,
