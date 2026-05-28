@@ -1,120 +1,76 @@
 package com.cletaeats.tracking
 
-import com.cletaeats.tracking.dto.UbicacionRepartidorRequest
+import com.cletaeats.pedido.PedidoRepository
 import com.cletaeats.tracking.dto.UbicacionRepartidorResponse
-import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Repository
-import java.sql.CallableStatement
-import java.sql.Types
+import org.springframework.web.server.ResponseStatusException
 
 @Repository
 class TrackingRepositoryImpl(
-    private val jdbcTemplate: JdbcTemplate
+    private val pedidoRepository: PedidoRepository
 ) : TrackingRepository {
-
-    override fun actualizarUbicacionRepartidor(
-        authName: String,
-        request: UbicacionRepartidorRequest
-    ): UbicacionRepartidorResponse {
-        return jdbcTemplate.execute(
-            """
-            { call CLETAEATS.PKG_TRACKING_ENTREGA.ACTUALIZAR_UBICACION_REPARTIDOR(
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?
-            ) }
-            """.trimIndent()
-        ) { cs: CallableStatement ->
-            cs.setString(1, authName)
-            cs.setLong(2, request.pedidoId ?: 0L)
-            cs.setDouble(3, request.latitud)
-            cs.setDouble(4, request.longitud)
-
-            if (request.precisionMetros == null) {
-                cs.setNull(5, Types.NUMERIC)
-            } else {
-                cs.setDouble(5, request.precisionMetros)
-            }
-
-            registerTrackingOutParams(
-                cs = cs,
-                startIndex = 6
-            )
-
-            cs.execute()
-
-            readTrackingOutParams(
-                cs = cs,
-                startIndex = 6
-            )
-        }!!
-    }
 
     override fun obtenerTrackingCliente(
         authName: String,
         pedidoId: Long
     ): UbicacionRepartidorResponse {
-        return jdbcTemplate.execute(
-            """
-            { call CLETAEATS.PKG_TRACKING_ENTREGA.OBTENER_TRACKING_CLIENTE(
-                ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?
-            ) }
-            """.trimIndent()
-        ) { cs: CallableStatement ->
-            cs.setString(1, authName)
-            cs.setLong(2, pedidoId)
+        val pedido = pedidoRepository.findById(pedidoId).orElseThrow {
+            ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Pedido no encontrado"
+            )
+        }
 
-            registerTrackingOutParams(
-                cs = cs,
-                startIndex = 3
+        if (pedido.cliente?.usuario?.correo != authName) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Este pedido no pertenece al cliente autenticado"
+            )
+        }
+
+        val estadoPedido = pedido.estado.trim().uppercase()
+
+        if (estadoPedido != "EN_CAMINO") {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El tracking solo está disponible cuando el pedido está EN_CAMINO"
+            )
+        }
+
+        val repartidor = pedido.repartidor
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "El pedido todavía no tiene repartidor asignado"
             )
 
-            cs.execute()
-
-            readTrackingOutParams(
-                cs = cs,
-                startIndex = 3
+        val latitud = repartidor.latitudActual
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "El repartidor todavía no ha enviado ubicación"
             )
-        }!!
-    }
 
-    private fun registerTrackingOutParams(
-        cs: CallableStatement,
-        startIndex: Int
-    ) {
-        cs.registerOutParameter(startIndex, Types.NUMERIC)      // O_PEDIDO_ID
-        cs.registerOutParameter(startIndex + 1, Types.NUMERIC)  // O_REPARTIDOR_ID
-        cs.registerOutParameter(startIndex + 2, Types.VARCHAR)  // O_REPARTIDOR_NOMBRE
-        cs.registerOutParameter(startIndex + 3, Types.VARCHAR)  // O_ESTADO_PEDIDO
-        cs.registerOutParameter(startIndex + 4, Types.NUMERIC)  // O_LATITUD
-        cs.registerOutParameter(startIndex + 5, Types.NUMERIC)  // O_LONGITUD
-        cs.registerOutParameter(startIndex + 6, Types.NUMERIC)  // O_PRECISION_METROS
-        cs.registerOutParameter(startIndex + 7, Types.TIMESTAMP) // O_ULTIMA_UBICACION_EN
-    }
+        val longitud = repartidor.longitudActual
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "El repartidor todavía no ha enviado ubicación"
+            )
 
-    private fun readTrackingOutParams(
-        cs: CallableStatement,
-        startIndex: Int
-    ): UbicacionRepartidorResponse {
+        val repartidorId = repartidor.repartidorId
+            ?: throw ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Repartidor sin ID"
+            )
+
         return UbicacionRepartidorResponse(
-            pedidoId = cs.getLongOrNull(startIndex),
-            repartidorId = cs.getLongOrNull(startIndex + 1),
-            repartidorNombre = cs.getString(startIndex + 2),
-            estadoPedido = cs.getString(startIndex + 3),
-            latitud = cs.getDoubleOrNull(startIndex + 4),
-            longitud = cs.getDoubleOrNull(startIndex + 5),
-            precisionMetros = cs.getDoubleOrNull(startIndex + 6),
-            ultimaUbicacionEn = cs.getTimestamp(startIndex + 7)?.toLocalDateTime()
+            pedidoId = pedido.pedidoId ?: pedidoId,
+            estadoPedido = pedido.estado,
+            repartidorId = repartidorId,
+            repartidorNombre = repartidor.usuario?.nombreCompleto ?: "Repartidor",
+            latitud = latitud,
+            longitud = longitud,
+            precisionMetros = repartidor.precisionMetros,
+            ultimaUbicacionEn = repartidor.ultimaUbicacionEn
         )
-    }
-
-    private fun CallableStatement.getLongOrNull(index: Int): Long? {
-        val value = getLong(index)
-        return if (wasNull()) null else value
-    }
-
-    private fun CallableStatement.getDoubleOrNull(index: Int): Double? {
-        val value = getDouble(index)
-        return if (wasNull()) null else value
     }
 }
