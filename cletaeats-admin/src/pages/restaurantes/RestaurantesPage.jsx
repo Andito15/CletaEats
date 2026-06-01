@@ -6,6 +6,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import InputAdornment from "@mui/material/InputAdornment";
+import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -23,9 +24,22 @@ const initialForm = {
     direccion: "",
     latitud: "",
     longitud: "",
-    tipoComida: "",
+    tipoComida: "RAPIDA",
     imagenUrl: "",
 };
+
+const tiposComida = [
+    { value: "RAPIDA", label: "Rápida" },
+    { value: "HAMBURGUESAS", label: "Hamburguesas" },
+    { value: "PIZZA", label: "Pizza" },
+    { value: "POLLO", label: "Pollo" },
+    { value: "CHINA", label: "China" },
+    { value: "JAPONESA", label: "Japonesa" },
+    { value: "ITALIANA", label: "Italiana" },
+    { value: "MEXICANA", label: "Mexicana" },
+    { value: "SALUDABLE", label: "Saludable" },
+    { value: "POSTRES", label: "Postres" },
+];
 
 function estadoClase(estado) {
     return estado === "ACTIVO"
@@ -53,13 +67,17 @@ export default function RestaurantesPage() {
         const cargarRestaurantes = async () => {
             try {
                 const response = await api.get("/api/restaurantes");
+
                 if (activo) {
                     setRestaurantes(response.data);
                     setError("");
                 }
             } catch (err) {
                 if (activo) {
-                    setError(err.response?.data?.message || "No se pudieron cargar los restaurantes");
+                    setError(
+                        err.response?.data?.message ||
+                        "No se pudieron cargar los restaurantes"
+                    );
                 }
             } finally {
                 if (activo) {
@@ -77,7 +95,10 @@ export default function RestaurantesPage() {
 
     const restaurantesFiltrados = useMemo(() => {
         const q = filtro.trim().toLowerCase();
-        if (!q) return restaurantes;
+
+        if (!q) {
+            return restaurantes;
+        }
 
         return restaurantes.filter((r) => {
             return (
@@ -96,13 +117,17 @@ export default function RestaurantesPage() {
             setRestaurantes(response.data);
             setError("");
         } catch (err) {
-            setError(err.response?.data?.message || "No se pudieron cargar los restaurantes");
+            setError(
+                err.response?.data?.message ||
+                "No se pudieron cargar los restaurantes"
+            );
         }
     };
 
     const abrirCrear = () => {
         setEditingItem(null);
         setForm(initialForm);
+        setError("");
         setDialogOpen(true);
     };
 
@@ -114,14 +139,18 @@ export default function RestaurantesPage() {
             direccion: item.direccion || "",
             latitud: item.latitud ?? "",
             longitud: item.longitud ?? "",
-            tipoComida: item.tipoComida || "",
+            tipoComida: item.tipoComida || "RAPIDA",
             imagenUrl: item.imagenUrl || "",
         });
+        setError("");
         setDialogOpen(true);
     };
 
     const cerrarDialog = () => {
-        if (saving) return;
+        if (saving) {
+            return;
+        }
+
         setDialogOpen(false);
         setEditingItem(null);
         setForm(initialForm);
@@ -133,7 +162,10 @@ export default function RestaurantesPage() {
     };
 
     const cerrarConfirmEstado = () => {
-        if (confirmLoading) return;
+        if (confirmLoading) {
+            return;
+        }
+
         setConfirmOpen(false);
         setConfirmItem(null);
     };
@@ -147,20 +179,54 @@ export default function RestaurantesPage() {
 
     const guardarRestaurante = async (e) => {
         e.preventDefault();
-        setSaving(true);
         setError("");
+
+        const latitud = form.latitud === "" ? null : Number(form.latitud);
+        const longitud = form.longitud === "" ? null : Number(form.longitud);
 
         const payload = {
             nombre: form.nombre.trim(),
             cedulaJuridica: form.cedulaJuridica.trim(),
             direccion: form.direccion.trim(),
-            latitud: form.latitud === "" ? null : Number(form.latitud),
-            longitud: form.longitud === "" ? null : Number(form.longitud),
-            tipoComida: form.tipoComida.trim(),
+            latitud,
+            longitud,
+            tipoComida: form.tipoComida || "RAPIDA",
             imagenUrl: form.imagenUrl.trim() || null,
         };
 
+        if (!payload.nombre) {
+            setError("Ingresá el nombre del restaurante.");
+            return;
+        }
+
+        if (!payload.cedulaJuridica) {
+            setError("Ingresá la cédula jurídica.");
+            return;
+        }
+
+        if (!payload.direccion) {
+            setError("Ingresá la dirección.");
+            return;
+        }
+
+        if (!payload.tipoComida) {
+            setError("Seleccioná un tipo de comida.");
+            return;
+        }
+
+        if (
+            latitud === null ||
+            longitud === null ||
+            Number.isNaN(latitud) ||
+            Number.isNaN(longitud)
+        ) {
+            setError("Seleccioná una ubicación válida en el mapa.");
+            return;
+        }
+
         try {
+            setSaving(true);
+
             if (editingItem) {
                 await api.put(`/api/admin/restaurantes/${editingItem.id}`, payload);
             } else {
@@ -170,14 +236,19 @@ export default function RestaurantesPage() {
             await recargar();
             cerrarDialog();
         } catch (err) {
-            setError(err.response?.data?.message || "No se pudo guardar el restaurante");
+            setError(
+                err.response?.data?.message ||
+                "No se pudo guardar el restaurante"
+            );
         } finally {
             setSaving(false);
         }
     };
 
     const subirImagen = async (file) => {
-        if (!file) return;
+        if (!file) {
+            return;
+        }
 
         const formData = new FormData();
         formData.append("file", file);
@@ -197,7 +268,10 @@ export default function RestaurantesPage() {
 
             handleChange("imagenUrl", response.data.url);
         } catch (err) {
-            setError(err.response?.data?.message || "No se pudo subir la imagen");
+            setError(
+                err.response?.data?.message ||
+                "No se pudo subir la imagen"
+            );
         } finally {
             setSaving(false);
         }
@@ -207,7 +281,10 @@ export default function RestaurantesPage() {
         e.preventDefault();
 
         const file = e.dataTransfer.files?.[0];
-        if (!file) return;
+
+        if (!file) {
+            return;
+        }
 
         subirImagen(file);
     };
@@ -217,19 +294,27 @@ export default function RestaurantesPage() {
     };
 
     const confirmarCambioEstado = async () => {
-        if (!confirmItem) return;
+        if (!confirmItem) {
+            return;
+        }
 
-        const nuevoEstado = confirmItem.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+        const nuevoEstado =
+            confirmItem.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
 
         try {
             setConfirmLoading(true);
+
             await api.patch(`/api/admin/restaurantes/${confirmItem.id}/estado`, {
                 estado: nuevoEstado,
             });
+
             await recargar();
             cerrarConfirmEstado();
         } catch (err) {
-            setError(err.response?.data?.message || "No se pudo actualizar el estado");
+            setError(
+                err.response?.data?.message ||
+                "No se pudo actualizar el estado"
+            );
         } finally {
             setConfirmLoading(false);
         }
@@ -316,26 +401,36 @@ export default function RestaurantesPage() {
                                         title={item.nombre}
                                     />
                                 </div>
+
                                 <div className="restaurantes-page__item-main">
                                     <div className="restaurantes-page__item-top">
-                                        <h3 className="restaurantes-page__item-name">{item.nombre}</h3>
-                                        <span className={estadoClase(item.estado)}>{item.estado}</span>
+                                        <h3 className="restaurantes-page__item-name">
+                                            {item.nombre}
+                                        </h3>
+
+                                        <span className={estadoClase(item.estado)}>
+                                            {item.estado}
+                                        </span>
                                     </div>
 
                                     <p className="restaurantes-page__item-line">
                                         {item.cedulaJuridica}
                                     </p>
+
                                     <p className="restaurantes-page__item-line">
                                         {item.direccion}
                                     </p>
+
                                     <p className="restaurantes-page__item-line">
                                         {item.tipoComida}
                                     </p>
-                                    {(item.latitud != null && item.longitud != null) && (
-                                        <p className="restaurantes-page__item-line">
-                                            {item.latitud}, {item.longitud}
-                                        </p>
-                                    )}
+
+                                    {item.latitud != null &&
+                                        item.longitud != null && (
+                                            <p className="restaurantes-page__item-line">
+                                                {item.latitud}, {item.longitud}
+                                            </p>
+                                        )}
                                 </div>
 
                                 <div className="restaurantes-page__item-actions">
@@ -357,8 +452,16 @@ export default function RestaurantesPage() {
                                                 : "restaurantes-page__icon-button--success"
                                         }`}
                                         onClick={() => abrirConfirmEstado(item)}
-                                        title={item.estado === "ACTIVO" ? "Inactivar" : "Activar"}
-                                        aria-label={item.estado === "ACTIVO" ? "Inactivar" : "Activar"}
+                                        title={
+                                            item.estado === "ACTIVO"
+                                                ? "Inactivar"
+                                                : "Activar"
+                                        }
+                                        aria-label={
+                                            item.estado === "ACTIVO"
+                                                ? "Inactivar"
+                                                : "Activar"
+                                        }
                                     >
                                         <PowerSettingsNewRoundedIcon fontSize="small" />
                                     </button>
@@ -391,7 +494,9 @@ export default function RestaurantesPage() {
                             <TextField
                                 label="Nombre"
                                 value={form.nombre}
-                                onChange={(e) => handleChange("nombre", e.target.value)}
+                                onChange={(e) =>
+                                    handleChange("nombre", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -399,7 +504,9 @@ export default function RestaurantesPage() {
                             <TextField
                                 label="Cédula jurídica"
                                 value={form.cedulaJuridica}
-                                onChange={(e) => handleChange("cedulaJuridica", e.target.value)}
+                                onChange={(e) =>
+                                    handleChange("cedulaJuridica", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -407,14 +514,24 @@ export default function RestaurantesPage() {
                             <TextField
                                 label="Dirección"
                                 value={form.direccion}
-                                onChange={(e) => handleChange("direccion", e.target.value)}
+                                onChange={(e) =>
+                                    handleChange("direccion", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
 
                             <LocationPickerMap
-                                latitud={form.latitud === "" ? null : Number(form.latitud)}
-                                longitud={form.longitud === "" ? null : Number(form.longitud)}
+                                latitud={
+                                    form.latitud === ""
+                                        ? null
+                                        : Number(form.latitud)
+                                }
+                                longitud={
+                                    form.longitud === ""
+                                        ? null
+                                        : Number(form.longitud)
+                                }
                                 direccion={form.direccion}
                                 onChange={({ latitud, longitud, direccion }) => {
                                     setForm((prev) => ({
@@ -429,7 +546,9 @@ export default function RestaurantesPage() {
                             <TextField
                                 label="Latitud"
                                 value={form.latitud}
-                                onChange={(e) => handleChange("latitud", e.target.value)}
+                                onChange={(e) =>
+                                    handleChange("latitud", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -437,15 +556,39 @@ export default function RestaurantesPage() {
                             <TextField
                                 label="Longitud"
                                 value={form.longitud}
-                                onChange={(e) => handleChange("longitud", e.target.value)}
+                                onChange={(e) =>
+                                    handleChange("longitud", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
 
                             <TextField
+                                select
+                                label="Tipo de comida"
+                                value={form.tipoComida}
+                                onChange={(e) =>
+                                    handleChange("tipoComida", e.target.value)
+                                }
+                                fullWidth
+                                required
+                            >
+                                {tiposComida.map((tipo) => (
+                                    <MenuItem
+                                        key={tipo.value}
+                                        value={tipo.value}
+                                    >
+                                        {tipo.label}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+
+                            <TextField
                                 label="URL de imagen"
                                 value={form.imagenUrl}
-                                onChange={(e) => handleChange("imagenUrl", e.target.value)}
+                                onChange={(e) =>
+                                    handleChange("imagenUrl", e.target.value)
+                                }
                                 fullWidth
                                 placeholder="https://..."
                             />
@@ -459,10 +602,14 @@ export default function RestaurantesPage() {
                                     type="file"
                                     accept="image/png,image/jpeg,image/webp"
                                     hidden
-                                    onChange={(e) => subirImagen(e.target.files?.[0])}
+                                    onChange={(e) =>
+                                        subirImagen(e.target.files?.[0])
+                                    }
                                 />
 
-                                <span className="app-upload-dropzone__icon">＋</span>
+                                <span className="app-upload-dropzone__icon">
+                                    ＋
+                                </span>
 
                                 <span className="app-upload-dropzone__title">
                                     Subir imagen
@@ -506,10 +653,18 @@ export default function RestaurantesPage() {
                 </form>
             </Dialog>
 
-            <Dialog open={confirmOpen} onClose={cerrarConfirmEstado} maxWidth="xs" fullWidth>
+            <Dialog
+                open={confirmOpen}
+                onClose={cerrarConfirmEstado}
+                maxWidth="xs"
+                fullWidth
+            >
                 <DialogTitle>
-                    {confirmItem?.estado === "ACTIVO" ? "Inactivar restaurante" : "Activar restaurante"}
+                    {confirmItem?.estado === "ACTIVO"
+                        ? "Inactivar restaurante"
+                        : "Activar restaurante"}
                 </DialogTitle>
+
                 <DialogContent dividers>
                     <p className="restaurantes-page__dialog-text">
                         {confirmItem?.estado === "ACTIVO"
@@ -517,6 +672,7 @@ export default function RestaurantesPage() {
                             : `Se activará ${confirmItem?.nombre}.`}
                     </p>
                 </DialogContent>
+
                 <DialogActions>
                     <button
                         type="button"
