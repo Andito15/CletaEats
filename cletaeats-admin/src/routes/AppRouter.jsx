@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {BrowserRouter, HashRouter, Navigate, Route, Routes} from "react-router-dom";
 import LoginPage from "../pages/auth/LoginPage";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import UsuariosPage from "../pages/usuarios/UsuariosPage";
@@ -15,7 +15,7 @@ function PrivateRoute({ children }) {
 
 export default function AppRouter() {
     return (
-        <BrowserRouter>
+        <HashRouter>
             <Routes>
                 <Route path="/" element={<LoginPage />} />
 
@@ -34,6 +34,6 @@ export default function AppRouter() {
                     <Route path="/quejas" element={<QuejasPage />} />
                 </Route>
             </Routes>
-        </BrowserRouter>
+        </HashRouter>
     );
 }
