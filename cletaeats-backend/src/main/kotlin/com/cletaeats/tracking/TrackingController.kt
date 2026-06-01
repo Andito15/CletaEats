@@ -17,6 +17,7 @@ class TrackingController(
     private val trackingService: TrackingService
 ) {
 
+
     @PatchMapping("/repartidores/ubicacion")
     fun actualizarUbicacionRepartidor(
         authentication: Authentication,
