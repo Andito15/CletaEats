@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://cletaeats.onrender.com",
+    baseURL: "https://cletaeatsapp.onrender.com",
 });
 
 api.interceptors.request.use((config) => {
