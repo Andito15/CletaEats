@@ -1,5 +1,6 @@
 package com.cletaeats.auth
 
+import com.cletaeats.upload.UploadService
 import com.cletaeats.usuario.UsuarioService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -12,7 +13,8 @@ import java.security.Principal
 @RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
-    private val usuarioService: UsuarioService
+    private val usuarioService: UsuarioService,
+    private val uploadService: UploadService
 ) {
 
     @PostMapping("/login")
