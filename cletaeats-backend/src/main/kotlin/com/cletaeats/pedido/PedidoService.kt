@@ -446,6 +446,7 @@ class PedidoService(
             restauranteNombre = pedido.restaurante?.nombre,
             repartidorId = pedido.repartidor?.repartidorId,
             repartidorNombre = pedido.repartidor?.usuario?.nombreCompleto,
+            repartidorFotoUrl = pedido.repartidor?.fotoUrl,
             direccionEntrega = pedido.direccionEntrega,
             distanciaKm = pedido.distanciaKm,
             tipoTarifaDia = pedido.tipoTarifaDia,

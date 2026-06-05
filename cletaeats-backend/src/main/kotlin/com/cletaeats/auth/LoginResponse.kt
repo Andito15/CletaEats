@@ -10,5 +10,6 @@ data class LoginResponse(
     val nombre: String? = null,
     val correo: String? = null,
     val rol: String? = null,
-    val estado: String? = null
+    val estado: String? = null,
+    val fotoUrl: String? = null
 )

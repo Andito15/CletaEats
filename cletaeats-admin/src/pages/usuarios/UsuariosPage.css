@@ -296,6 +296,50 @@
     color: var(--color-text-soft);
 }
 
+.usuarios-page__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #eef7f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.usuarios-page__avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.usuarios-page__avatar-placeholder {
+    font-weight: 800;
+    color: #16823a;
+}
+
+.usuarios-page__photo-preview {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 18px;
+    background: #f5f7f6;
+}
+
+.usuarios-page__photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 999px;
+    object-fit: cover;
+}
+
+.usuarios-page__photo-placeholder {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
 @media (max-width: 700px) {
     .usuarios-page__item-content {
         align-items: flex-start;

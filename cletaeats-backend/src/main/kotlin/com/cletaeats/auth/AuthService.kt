@@ -31,6 +31,7 @@ class AuthService(
 
     fun login(request: LoginRequest): LoginResponse {
         val correo = request.correo.trim().lowercase()
+
         val usuario = usuarioRepository.findByCorreo(correo)
             ?: return LoginResponse(
                 success = false,
@@ -42,7 +43,8 @@ class AuthService(
                 nombre = null,
                 correo = null,
                 rol = null,
-                estado = null
+                estado = null,
+                fotoUrl = null
             )
 
         if (usuario.estado != "ACTIVO") {
@@ -56,11 +58,13 @@ class AuthService(
                 nombre = null,
                 correo = null,
                 rol = null,
-                estado = null
+                estado = null,
+                fotoUrl = null
             )
         }
 
         val stored = usuario.passwordHash
+
         val passwordOk =
             if (
                 stored.startsWith("\$2a\$") ||
@@ -83,23 +87,28 @@ class AuthService(
                 nombre = null,
                 correo = null,
                 rol = null,
-                estado = null
+                estado = null,
+                fotoUrl = null
             )
         }
 
         val token = jwtService.generateToken(usuario)
+        val rolCodigo = usuario.rol?.codigo
 
-        val clienteId = if (usuario.rol?.codigo == "CLIENTE") {
+        val clienteId = if (rolCodigo == "CLIENTE" && usuario.usuarioId != null) {
             clienteRepository.findByUsuario_UsuarioId(usuario.usuarioId!!)?.clienteId
         } else {
             null
         }
 
-        val repartidorId = if (usuario.rol?.codigo == "REPARTIDOR") {
-            repartidorRepository.findByUsuario_UsuarioId(usuario.usuarioId!!)?.repartidorId
+        val repartidor = if (rolCodigo == "REPARTIDOR" && usuario.usuarioId != null) {
+            repartidorRepository.findByUsuario_UsuarioId(usuario.usuarioId!!)
         } else {
             null
         }
+
+        val repartidorId = repartidor?.repartidorId
+        val fotoUrl = repartidor?.fotoUrl
 
         return LoginResponse(
             success = true,
@@ -110,8 +119,9 @@ class AuthService(
             repartidorId = repartidorId,
             nombre = usuario.nombreCompleto,
             correo = usuario.correo,
-            rol = usuario.rol?.codigo,
-            estado = usuario.estado
+            rol = rolCodigo,
+            estado = usuario.estado,
+            fotoUrl = fotoUrl
         )
     }
 

@@ -7,5 +7,6 @@ data class UsuarioResponse(
     val cedula: String,
     val telefono: String,
     val estado: String,
-    val rol: String
+    val rol: String,
+    val fotoUrl: String? = null
 )

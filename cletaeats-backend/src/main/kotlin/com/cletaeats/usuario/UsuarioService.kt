@@ -1,23 +1,34 @@
 package com.cletaeats.usuario
 
 import com.cletaeats.auth.MeResponse
+import com.cletaeats.repartidor.RepartidorRepository
 import org.springframework.stereotype.Service
 
 @Service
 class UsuarioService(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val repartidorRepository: RepartidorRepository
 ) {
 
     fun listarUsuarios(): List<UsuarioResponse> {
-        return usuarioRepository.findAll().map {
+        return usuarioRepository.findAll().map { usuario ->
+            val rolCodigo = usuario.rol?.codigo ?: ""
+
+            val fotoUrl = if (rolCodigo == "REPARTIDOR" && usuario.usuarioId != null) {
+                repartidorRepository.findByUsuario_UsuarioId(usuario.usuarioId!!)?.fotoUrl
+            } else {
+                null
+            }
+
             UsuarioResponse(
-                id = it.usuarioId,
-                nombre = it.nombreCompleto,
-                correo = it.correo,
-                cedula = it.cedula,
-                telefono = it.telefonoCelular,
-                estado = it.estado,
-                rol = it.rol?.codigo ?: ""
+                id = usuario.usuarioId,
+                nombre = usuario.nombreCompleto,
+                correo = usuario.correo,
+                cedula = usuario.cedula,
+                telefono = usuario.telefonoCelular,
+                estado = usuario.estado,
+                rol = rolCodigo,
+                fotoUrl = fotoUrl
             )
         }
     }

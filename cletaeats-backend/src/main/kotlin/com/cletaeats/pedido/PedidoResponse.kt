@@ -21,5 +21,6 @@ data class PedidoResponse(
     val costoKmAplicado: BigDecimal,
     val observaciones: String?,
     val items: List<PedidoItemResponse>,
-    val factura: FacturaResumenResponse?
+    val factura: FacturaResumenResponse?,
+    val repartidorFotoUrl: String? = null
 )

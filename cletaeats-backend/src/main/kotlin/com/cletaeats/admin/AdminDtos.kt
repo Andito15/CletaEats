@@ -12,7 +12,8 @@ data class AdminUsuarioResponse(
     val cedula: String,
     val telefono: String,
     val rol: String,
-    val estado: String
+    val estado: String,
+    val fotoUrl: String? = null
 )
 
 data class AdminClienteResponse(
@@ -36,7 +37,8 @@ data class AdminRepartidorResponse(
     val estadoUsuario: String,
     val disponibilidad: String,
     val kilometrosRecorridosDia: BigDecimal,
-    val amonestacionesActivas: Long
+    val amonestacionesActivas: Long,
+    val fotoUrl: String? = null
 )
 
 data class UsuarioEstadoRequest(
@@ -85,6 +87,7 @@ data class AdminCreateUserRequest(
     @field:Size(max = 500)
     val fotoUrl: String? = null
 )
+
 data class AdminUpdateUserRequest(
     @field:NotBlank(message = "El nombre es obligatorio")
     @field:Size(max = 150)

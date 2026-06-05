@@ -64,6 +64,10 @@ function disponibilidadClase(disponibilidad) {
         : "app-chip app-chip--warning";
 }
 
+function getFotoUsuario(usuario, repartidor) {
+    return usuario?.fotoUrl || repartidor?.fotoUrl || "";
+}
+
 export default function UsuariosPage() {
     const [usuarios, setUsuarios] = useState([]);
     const [clientesMap, setClientesMap] = useState({});
@@ -115,7 +119,10 @@ export default function UsuariosPage() {
                 setClientesMap(clientesObj);
 
                 const repartidoresObj = Object.fromEntries(
-                    (repartidoresRes.data || []).map((repartidor) => [repartidor.usuarioId, repartidor])
+                    (repartidoresRes.data || []).map((repartidor) => [
+                        repartidor.usuarioId,
+                        repartidor,
+                    ])
                 );
                 setRepartidoresMap(repartidoresObj);
 
@@ -151,7 +158,10 @@ export default function UsuariosPage() {
             setClientesMap(clientesObj);
 
             const repartidoresObj = Object.fromEntries(
-                (repartidoresRes.data || []).map((repartidor) => [repartidor.usuarioId, repartidor])
+                (repartidoresRes.data || []).map((repartidor) => [
+                    repartidor.usuarioId,
+                    repartidor,
+                ])
             );
             setRepartidoresMap(repartidoresObj);
 
@@ -188,6 +198,7 @@ export default function UsuariosPage() {
 
     const cerrarConfirmacion = () => {
         if (actionLoading) return;
+
         setConfirmOpen(false);
         setConfirmData({
             title: "",
@@ -235,11 +246,13 @@ export default function UsuariosPage() {
 
     const abrirCrearUsuario = () => {
         setCreateForm(initialCreateForm);
+        setError("");
         setCreateOpen(true);
     };
 
     const cerrarCrearUsuario = () => {
         if (savingUser) return;
+
         setCreateOpen(false);
         setCreateForm(initialCreateForm);
     };
@@ -260,15 +273,21 @@ export default function UsuariosPage() {
             rol: createForm.rol,
             nombre: createForm.nombre.trim(),
             cedula: createForm.cedula.trim(),
-            correo: createForm.correo.trim(),
+            correo: createForm.correo.trim().toLowerCase(),
             telefono: createForm.telefono.trim(),
             password: createForm.password.trim(),
             direccionExacta:
                 createForm.rol === "CLIENTE" || createForm.rol === "REPARTIDOR"
                     ? createForm.direccionExacta.trim()
                     : null,
-            disponibilidad: createForm.rol === "REPARTIDOR" ? createForm.disponibilidad : null,
-            fotoUrl: createForm.rol === "REPARTIDOR" ? createForm.fotoUrl.trim() || null : null,
+            disponibilidad:
+                createForm.rol === "REPARTIDOR"
+                    ? createForm.disponibilidad
+                    : null,
+            fotoUrl:
+                createForm.rol === "REPARTIDOR"
+                    ? createForm.fotoUrl.trim() || null
+                    : null,
         };
 
         try {
@@ -295,14 +314,16 @@ export default function UsuariosPage() {
             telefono: usuario.telefono || "",
             direccionExacta: cliente?.direccionExacta || repartidor?.direccionExacta || "",
             disponibilidad: repartidor?.disponibilidad || "DISPONIBLE",
-            fotoUrl: repartidor?.fotoUrl || "",
+            fotoUrl: getFotoUsuario(usuario, repartidor),
         });
 
+        setError("");
         setEditOpen(true);
     };
 
     const cerrarEditarUsuario = () => {
         if (savingEdit) return;
+
         setEditOpen(false);
         setEditForm(initialEditForm);
     };
@@ -322,14 +343,20 @@ export default function UsuariosPage() {
         const payload = {
             nombre: editForm.nombre.trim(),
             cedula: editForm.cedula.trim(),
-            correo: editForm.correo.trim(),
+            correo: editForm.correo.trim().toLowerCase(),
             telefono: editForm.telefono.trim(),
             direccionExacta:
                 editForm.rol === "CLIENTE" || editForm.rol === "REPARTIDOR"
                     ? editForm.direccionExacta.trim()
                     : null,
-            disponibilidad: editForm.rol === "REPARTIDOR" ? editForm.disponibilidad : null,
-            fotoUrl: editForm.rol === "REPARTIDOR" ? editForm.fotoUrl.trim() || null : null,
+            disponibilidad:
+                editForm.rol === "REPARTIDOR"
+                    ? editForm.disponibilidad
+                    : null,
+            fotoUrl:
+                editForm.rol === "REPARTIDOR"
+                    ? editForm.fotoUrl.trim() || null
+                    : null,
         };
 
         try {
@@ -340,6 +367,55 @@ export default function UsuariosPage() {
             setError(err.response?.data?.message || "No se pudo actualizar el usuario");
         } finally {
             setSavingEdit(false);
+        }
+    };
+
+    const subirFotoUsuario = async (file, target) => {
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            if (target === "create") {
+                setSavingUser(true);
+            } else {
+                setSavingEdit(true);
+            }
+
+            setError("");
+
+            const response = await api.post(
+                "/api/admin/uploads/imagen",
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+
+            const url = response.data?.url || "";
+
+            if (target === "create") {
+                setCreateForm((prev) => ({
+                    ...prev,
+                    fotoUrl: url,
+                }));
+            } else {
+                setEditForm((prev) => ({
+                    ...prev,
+                    fotoUrl: url,
+                }));
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || "No se pudo subir la foto");
+        } finally {
+            if (target === "create") {
+                setSavingUser(false);
+            } else {
+                setSavingEdit(false);
+            }
         }
     };
 
@@ -357,6 +433,7 @@ export default function UsuariosPage() {
             const response = await api.get(
                 `/api/admin/repartidores/${repartidor.repartidorId}/amonestaciones`
             );
+
             setHistorialAmonestaciones(response.data || []);
             setError("");
         } catch (err) {
@@ -383,10 +460,81 @@ export default function UsuariosPage() {
 
                 {repartidor && (
                     <span className={disponibilidadClase(repartidor.disponibilidad)}>
-            {repartidor.disponibilidad}
-          </span>
+                        {repartidor.disponibilidad}
+                    </span>
                 )}
             </div>
+        );
+    };
+
+    const renderAvatar = (usuario, repartidor) => {
+        const fotoUrl = getFotoUsuario(usuario, repartidor);
+
+        return (
+            <div className="usuarios-page__avatar">
+                {fotoUrl ? (
+                    <img
+                        src={fotoUrl}
+                        alt={usuario.nombre || "Usuario"}
+                        className="usuarios-page__avatar-image"
+                        onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                        }}
+                    />
+                ) : (
+                    <span className="usuarios-page__avatar-placeholder">
+                        {(usuario.nombre || "U").charAt(0).toUpperCase()}
+                    </span>
+                )}
+            </div>
+        );
+    };
+
+    const renderFotoForm = (form, target, onChange, disabled) => {
+        return (
+            <>
+                <TextField
+                    label="URL de foto"
+                    value={form.fotoUrl}
+                    onChange={(e) => onChange("fotoUrl", e.target.value)}
+                    fullWidth
+                    placeholder="https://..."
+                />
+
+                <label className="app-upload-dropzone">
+                    <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        hidden
+                        disabled={disabled}
+                        onChange={(e) => subirFotoUsuario(e.target.files?.[0], target)}
+                    />
+
+                    <span className="app-upload-dropzone__icon">＋</span>
+
+                    <span className="app-upload-dropzone__title">
+                        Subir foto del repartidor
+                    </span>
+
+                    <span className="app-upload-dropzone__hint">
+                        PNG, JPG o WEBP
+                    </span>
+                </label>
+
+                <div className="usuarios-page__photo-preview">
+                    {form.fotoUrl ? (
+                        <img
+                            src={form.fotoUrl}
+                            alt="Foto del repartidor"
+                            className="usuarios-page__photo"
+                        />
+                    ) : (
+                        <span className="usuarios-page__photo-placeholder">
+                            Sin foto
+                        </span>
+                    )}
+                </div>
+            </>
         );
     };
 
@@ -421,7 +569,9 @@ export default function UsuariosPage() {
                         aria-label={usuario.estado === "ACTIVO" ? "Inactivar" : "Activar"}
                         onClick={() =>
                             abrirConfirmacion(
-                                usuario.estado === "ACTIVO" ? "Inactivar usuario" : "Activar usuario",
+                                usuario.estado === "ACTIVO"
+                                    ? "Inactivar usuario"
+                                    : "Activar usuario",
                                 `Se cambiará el estado de ${usuario.nombre} a ${nuevoEstado}.`,
                                 "toggle-estado-usuario",
                                 {
@@ -443,11 +593,21 @@ export default function UsuariosPage() {
                                 ? "usuarios-page__icon-button--success"
                                 : "usuarios-page__icon-button--danger"
                         }`}
-                        title={usuario.estado === "SUSPENDIDO" ? "Reactivar cliente" : "Suspender cliente"}
-                        aria-label={usuario.estado === "SUSPENDIDO" ? "Reactivar cliente" : "Suspender cliente"}
+                        title={
+                            usuario.estado === "SUSPENDIDO"
+                                ? "Reactivar cliente"
+                                : "Suspender cliente"
+                        }
+                        aria-label={
+                            usuario.estado === "SUSPENDIDO"
+                                ? "Reactivar cliente"
+                                : "Suspender cliente"
+                        }
                         onClick={() =>
                             abrirConfirmacion(
-                                usuario.estado === "SUSPENDIDO" ? "Reactivar cliente" : "Suspender cliente",
+                                usuario.estado === "SUSPENDIDO"
+                                    ? "Reactivar cliente"
+                                    : "Suspender cliente",
                                 usuario.estado === "SUSPENDIDO"
                                     ? `Se reactivará el cliente ${usuario.nombre}.`
                                     : `Se suspenderá el cliente ${usuario.nombre}.`,
@@ -474,7 +634,9 @@ export default function UsuariosPage() {
                             className="usuarios-page__icon-button usuarios-page__icon-button--info"
                             title="Ver amonestaciones"
                             aria-label="Ver amonestaciones"
-                            onClick={() => abrirHistorialAmonestaciones(repartidor, usuario.nombre)}
+                            onClick={() =>
+                                abrirHistorialAmonestaciones(repartidor, usuario.nombre)
+                            }
                         >
                             <VisibilityRoundedIcon fontSize="small" />
                         </button>
@@ -486,8 +648,16 @@ export default function UsuariosPage() {
                                     ? "usuarios-page__icon-button--success"
                                     : "usuarios-page__icon-button--danger"
                             }`}
-                            title={usuario.estado === "SUSPENDIDO" ? "Reactivar repartidor" : "Suspender repartidor"}
-                            aria-label={usuario.estado === "SUSPENDIDO" ? "Reactivar repartidor" : "Suspender repartidor"}
+                            title={
+                                usuario.estado === "SUSPENDIDO"
+                                    ? "Reactivar repartidor"
+                                    : "Suspender repartidor"
+                            }
+                            aria-label={
+                                usuario.estado === "SUSPENDIDO"
+                                    ? "Reactivar repartidor"
+                                    : "Suspender repartidor"
+                            }
                             onClick={() =>
                                 abrirConfirmacion(
                                     usuario.estado === "SUSPENDIDO"
@@ -499,7 +669,10 @@ export default function UsuariosPage() {
                                     "toggle-estado-usuario",
                                     {
                                         usuarioId: usuario.usuarioId,
-                                        nuevoEstado: usuario.estado === "SUSPENDIDO" ? "ACTIVO" : "SUSPENDIDO",
+                                        nuevoEstado:
+                                            usuario.estado === "SUSPENDIDO"
+                                                ? "ACTIVO"
+                                                : "SUSPENDIDO",
                                     }
                                 )
                             }
@@ -528,13 +701,17 @@ export default function UsuariosPage() {
                                 abrirConfirmacion(
                                     "Cambiar disponibilidad",
                                     `Se cambiará la disponibilidad de ${usuario.nombre} a ${
-                                        repartidor.disponibilidad === "DISPONIBLE" ? "OCUPADO" : "DISPONIBLE"
+                                        repartidor.disponibilidad === "DISPONIBLE"
+                                            ? "OCUPADO"
+                                            : "DISPONIBLE"
                                     }.`,
                                     "toggle-disponibilidad-repartidor",
                                     {
                                         repartidorId: repartidor.repartidorId,
                                         nuevaDisponibilidad:
-                                            repartidor.disponibilidad === "DISPONIBLE" ? "OCUPADO" : "DISPONIBLE",
+                                            repartidor.disponibilidad === "DISPONIBLE"
+                                                ? "OCUPADO"
+                                                : "DISPONIBLE",
                                     }
                                 )
                             }
@@ -552,7 +729,9 @@ export default function UsuariosPage() {
             <div className="usuarios-page__header usuarios-page__header--actions">
                 <div>
                     <h1 className="usuarios-page__title">Usuarios</h1>
-                    <p className="usuarios-page__subtitle">Gestión general de cuentas del sistema</p>
+                    <p className="usuarios-page__subtitle">
+                        Gestión general de cuentas del sistema
+                    </p>
                 </div>
 
                 <button
@@ -603,9 +782,17 @@ export default function UsuariosPage() {
                         return (
                             <div className="usuarios-page__item" key={usuario.usuarioId}>
                                 <div className="usuarios-page__item-content">
+                                    {renderAvatar(usuario, repartidor)}
+
                                     <div className="usuarios-page__item-main">
-                                        <h3 className="usuarios-page__item-name">{usuario.nombre}</h3>
-                                        <p className="usuarios-page__item-line">{usuario.correo}</p>
+                                        <h3 className="usuarios-page__item-name">
+                                            {usuario.nombre}
+                                        </h3>
+
+                                        <p className="usuarios-page__item-line">
+                                            {usuario.correo}
+                                        </p>
+
                                         <p className="usuarios-page__item-line">
                                             {usuario.cedula} · {usuario.telefono}
                                         </p>
@@ -618,7 +805,9 @@ export default function UsuariosPage() {
 
                                         {repartidor && (
                                             <p className="usuarios-page__item-line">
-                                                Km del día: {repartidor.kilometrosRecorridosDia} · Amonestaciones:{" "}
+                                                Km del día:{" "}
+                                                {repartidor.kilometrosRecorridosDia} ·
+                                                Amonestaciones:{" "}
                                                 {repartidor.amonestacionesActivas}
                                             </p>
                                         )}
@@ -642,9 +831,11 @@ export default function UsuariosPage() {
 
             <Dialog open={confirmOpen} onClose={cerrarConfirmacion} maxWidth="xs" fullWidth>
                 <DialogTitle>{confirmData.title}</DialogTitle>
+
                 <DialogContent dividers>
                     <p className="usuarios-page__dialog-text">{confirmData.message}</p>
                 </DialogContent>
+
                 <DialogActions>
                     <button
                         type="button"
@@ -655,6 +846,7 @@ export default function UsuariosPage() {
                     >
                         <CloseRoundedIcon fontSize="small" />
                     </button>
+
                     <button
                         type="button"
                         className="usuarios-page__dialog-icon-button usuarios-page__dialog-icon-button--primary"
@@ -671,13 +863,16 @@ export default function UsuariosPage() {
             <Dialog open={createOpen} onClose={cerrarCrearUsuario} maxWidth="sm" fullWidth>
                 <form onSubmit={guardarUsuario}>
                     <DialogTitle>Nuevo usuario</DialogTitle>
+
                     <DialogContent dividers>
                         <div className="usuarios-page__form">
                             <TextField
                                 select
                                 label="Rol"
                                 value={createForm.rol}
-                                onChange={(e) => handleCreateChange("rol", e.target.value)}
+                                onChange={(e) =>
+                                    handleCreateChange("rol", e.target.value)
+                                }
                                 fullWidth
                             >
                                 <MenuItem value="ADMIN">ADMIN</MenuItem>
@@ -688,7 +883,9 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Nombre completo"
                                 value={createForm.nombre}
-                                onChange={(e) => handleCreateChange("nombre", e.target.value)}
+                                onChange={(e) =>
+                                    handleCreateChange("nombre", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -696,7 +893,9 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Cédula"
                                 value={createForm.cedula}
-                                onChange={(e) => handleCreateChange("cedula", e.target.value)}
+                                onChange={(e) =>
+                                    handleCreateChange("cedula", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -704,7 +903,9 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Correo"
                                 value={createForm.correo}
-                                onChange={(e) => handleCreateChange("correo", e.target.value)}
+                                onChange={(e) =>
+                                    handleCreateChange("correo", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -712,7 +913,9 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Teléfono"
                                 value={createForm.telefono}
-                                onChange={(e) => handleCreateChange("telefono", e.target.value)}
+                                onChange={(e) =>
+                                    handleCreateChange("telefono", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -721,16 +924,24 @@ export default function UsuariosPage() {
                                 label="Contraseña"
                                 type="password"
                                 value={createForm.password}
-                                onChange={(e) => handleCreateChange("password", e.target.value)}
+                                onChange={(e) =>
+                                    handleCreateChange("password", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
 
-                            {(createForm.rol === "CLIENTE" || createForm.rol === "REPARTIDOR") && (
+                            {(createForm.rol === "CLIENTE" ||
+                                createForm.rol === "REPARTIDOR") && (
                                 <TextField
                                     label="Dirección exacta"
                                     value={createForm.direccionExacta}
-                                    onChange={(e) => handleCreateChange("direccionExacta", e.target.value)}
+                                    onChange={(e) =>
+                                        handleCreateChange(
+                                            "direccionExacta",
+                                            e.target.value
+                                        )
+                                    }
                                     fullWidth
                                     required
                                 />
@@ -742,23 +953,29 @@ export default function UsuariosPage() {
                                         select
                                         label="Disponibilidad"
                                         value={createForm.disponibilidad}
-                                        onChange={(e) => handleCreateChange("disponibilidad", e.target.value)}
+                                        onChange={(e) =>
+                                            handleCreateChange(
+                                                "disponibilidad",
+                                                e.target.value
+                                            )
+                                        }
                                         fullWidth
                                     >
                                         <MenuItem value="DISPONIBLE">DISPONIBLE</MenuItem>
                                         <MenuItem value="OCUPADO">OCUPADO</MenuItem>
                                     </TextField>
 
-                                    <TextField
-                                        label="URL de foto"
-                                        value={createForm.fotoUrl}
-                                        onChange={(e) => handleCreateChange("fotoUrl", e.target.value)}
-                                        fullWidth
-                                    />
+                                    {renderFotoForm(
+                                        createForm,
+                                        "create",
+                                        handleCreateChange,
+                                        savingUser
+                                    )}
                                 </>
                             )}
                         </div>
                     </DialogContent>
+
                     <DialogActions>
                         <button
                             type="button"
@@ -769,6 +986,7 @@ export default function UsuariosPage() {
                         >
                             <CloseRoundedIcon fontSize="small" />
                         </button>
+
                         <button
                             type="submit"
                             className="usuarios-page__dialog-icon-button usuarios-page__dialog-icon-button--primary"
@@ -785,14 +1003,22 @@ export default function UsuariosPage() {
             <Dialog open={editOpen} onClose={cerrarEditarUsuario} maxWidth="sm" fullWidth>
                 <form onSubmit={actualizarUsuario}>
                     <DialogTitle>Editar usuario</DialogTitle>
+
                     <DialogContent dividers>
                         <div className="usuarios-page__form">
-                            <TextField label="Rol" value={editForm.rol} fullWidth disabled />
+                            <TextField
+                                label="Rol"
+                                value={editForm.rol}
+                                fullWidth
+                                disabled
+                            />
 
                             <TextField
                                 label="Nombre completo"
                                 value={editForm.nombre}
-                                onChange={(e) => handleEditChange("nombre", e.target.value)}
+                                onChange={(e) =>
+                                    handleEditChange("nombre", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -800,7 +1026,9 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Cédula"
                                 value={editForm.cedula}
-                                onChange={(e) => handleEditChange("cedula", e.target.value)}
+                                onChange={(e) =>
+                                    handleEditChange("cedula", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -808,7 +1036,9 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Correo"
                                 value={editForm.correo}
-                                onChange={(e) => handleEditChange("correo", e.target.value)}
+                                onChange={(e) =>
+                                    handleEditChange("correo", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
@@ -816,16 +1046,24 @@ export default function UsuariosPage() {
                             <TextField
                                 label="Teléfono"
                                 value={editForm.telefono}
-                                onChange={(e) => handleEditChange("telefono", e.target.value)}
+                                onChange={(e) =>
+                                    handleEditChange("telefono", e.target.value)
+                                }
                                 fullWidth
                                 required
                             />
 
-                            {(editForm.rol === "CLIENTE" || editForm.rol === "REPARTIDOR") && (
+                            {(editForm.rol === "CLIENTE" ||
+                                editForm.rol === "REPARTIDOR") && (
                                 <TextField
                                     label="Dirección exacta"
                                     value={editForm.direccionExacta}
-                                    onChange={(e) => handleEditChange("direccionExacta", e.target.value)}
+                                    onChange={(e) =>
+                                        handleEditChange(
+                                            "direccionExacta",
+                                            e.target.value
+                                        )
+                                    }
                                     fullWidth
                                     required
                                 />
@@ -837,23 +1075,29 @@ export default function UsuariosPage() {
                                         select
                                         label="Disponibilidad"
                                         value={editForm.disponibilidad}
-                                        onChange={(e) => handleEditChange("disponibilidad", e.target.value)}
+                                        onChange={(e) =>
+                                            handleEditChange(
+                                                "disponibilidad",
+                                                e.target.value
+                                            )
+                                        }
                                         fullWidth
                                     >
                                         <MenuItem value="DISPONIBLE">DISPONIBLE</MenuItem>
                                         <MenuItem value="OCUPADO">OCUPADO</MenuItem>
                                     </TextField>
 
-                                    <TextField
-                                        label="URL de foto"
-                                        value={editForm.fotoUrl}
-                                        onChange={(e) => handleEditChange("fotoUrl", e.target.value)}
-                                        fullWidth
-                                    />
+                                    {renderFotoForm(
+                                        editForm,
+                                        "edit",
+                                        handleEditChange,
+                                        savingEdit
+                                    )}
                                 </>
                             )}
                         </div>
                     </DialogContent>
+
                     <DialogActions>
                         <button
                             type="button"
@@ -864,6 +1108,7 @@ export default function UsuariosPage() {
                         >
                             <CloseRoundedIcon fontSize="small" />
                         </button>
+
                         <button
                             type="submit"
                             className="usuarios-page__dialog-icon-button usuarios-page__dialog-icon-button--primary"
@@ -877,13 +1122,20 @@ export default function UsuariosPage() {
                 </form>
             </Dialog>
 
-            <Dialog open={historialOpen} onClose={cerrarHistorialAmonestaciones} maxWidth="sm" fullWidth>
+            <Dialog
+                open={historialOpen}
+                onClose={cerrarHistorialAmonestaciones}
+                maxWidth="sm"
+                fullWidth
+            >
                 <DialogTitle>Amonestaciones</DialogTitle>
 
                 <DialogContent dividers>
                     <div className="usuarios-page__history">
                         {historialNombre && (
-                            <p className="usuarios-page__history-title">{historialNombre}</p>
+                            <p className="usuarios-page__history-title">
+                                {historialNombre}
+                            </p>
                         )}
 
                         {historialLoading && (
@@ -895,31 +1147,46 @@ export default function UsuariosPage() {
                         {!historialLoading && !!historialAmonestaciones.length && (
                             <div className="usuarios-page__history-list">
                                 {historialAmonestaciones.map((item) => (
-                                    <div className="usuarios-page__history-card" key={item.amonestacionId}>
+                                    <div
+                                        className="usuarios-page__history-card"
+                                        key={item.amonestacionId}
+                                    >
                                         <div className="usuarios-page__history-top">
-                      <span
-                          className={
-                              item.activa === "S"
-                                  ? "app-chip app-chip--success"
-                                  : "app-chip app-chip--neutral"
-                          }
-                      >
-                        {item.activa === "S" ? "ACTIVA" : "INACTIVA"}
-                      </span>
+                                            <span
+                                                className={
+                                                    item.activa === "S"
+                                                        ? "app-chip app-chip--success"
+                                                        : "app-chip app-chip--neutral"
+                                                }
+                                            >
+                                                {item.activa === "S"
+                                                    ? "ACTIVA"
+                                                    : "INACTIVA"}
+                                            </span>
+
                                             <span className="usuarios-page__history-date">
-                        {formatoFechaAmonestacion(item.fechaAmonestacion)}
-                      </span>
+                                                {formatoFechaAmonestacion(
+                                                    item.fechaAmonestacion
+                                                )}
+                                            </span>
                                         </div>
 
-                                        <p className="usuarios-page__history-text">{item.motivo}</p>
-                                        <p className="usuarios-page__history-admin">{item.adminNombre || "—"}</p>
+                                        <p className="usuarios-page__history-text">
+                                            {item.motivo}
+                                        </p>
+
+                                        <p className="usuarios-page__history-admin">
+                                            {item.adminNombre || "—"}
+                                        </p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         {!historialLoading && !historialAmonestaciones.length && (
-                            <div className="usuarios-page__empty">Sin amonestaciones</div>
+                            <div className="usuarios-page__empty">
+                                Sin amonestaciones
+                            </div>
                         )}
                     </div>
                 </DialogContent>
