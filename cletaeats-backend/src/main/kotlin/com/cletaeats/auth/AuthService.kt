@@ -206,7 +206,7 @@ class AuthService(
                         kilometrosRecorridosDia = BigDecimal.ZERO,
                         costoKmHabil = BigDecimal("1000.00"),
                         costoKmFeriado = BigDecimal("1500.00"),
-                        fotoUrl = null
+                        fotoUrl = request.fotoUrl
                     )
                 )
             }

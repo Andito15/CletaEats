@@ -4,6 +4,7 @@ import com.cletaeats.usuario.UsuarioService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
 import java.security.Principal
 
@@ -30,5 +31,13 @@ class AuthController(
         @RequestBody request: RegisterRequest
     ): BasicResponse {
         return authService.register(request)
+    }
+
+    @PostMapping("/uploads/imagen")
+    fun subirImagenRegistro(
+        @RequestParam("file") file: MultipartFile
+    ): Map<String, String> {
+        val url = uploadService.guardarImagen(file)
+        return mapOf("url" to url)
     }
 }

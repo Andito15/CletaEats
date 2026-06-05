@@ -40,7 +40,8 @@ class SecurityConfig(
 
                     .requestMatchers(
                         "/api/auth/login",
-                        "/api/auth/register"
+                        "/api/auth/register",
+                        "/api/auth/uploads/imagen"
                     ).permitAll()
 
                     .requestMatchers("/api/auth/me").authenticated()
